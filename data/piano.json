@@ -1,0 +1,1563 @@
+{
+  "anno_scolastico": "2026/2027",
+  "istituto": "IC Govoni - Secondaria I grado T. Tasso",
+  "target_ore": {
+    "collegio": 40,
+    "consigli": 40
+  },
+  "fonte": "Piano Annuale Attività Docenti Secondaria 2026-2027 (Circ. n. 00 del 01/09/2026)",
+  "attivita": [
+    {
+      "id": 1,
+      "data": "2026-09-01",
+      "titolo": "Presa di servizio personale",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 2,
+      "ora": "08:00"
+    },
+    {
+      "id": 2,
+      "data": "2026-09-01",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 1.5,
+      "ora": "11:30"
+    },
+    {
+      "id": 3,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "08:30",
+      "classe": "2A"
+    },
+    {
+      "id": 4,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "08:30",
+      "classe": "2B"
+    },
+    {
+      "id": 5,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "09:30",
+      "classe": "2C"
+    },
+    {
+      "id": 6,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "09:30",
+      "classe": "2D"
+    },
+    {
+      "id": 7,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "10:00",
+      "classe": "2F"
+    },
+    {
+      "id": 8,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "10:30",
+      "classe": "3A"
+    },
+    {
+      "id": 9,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "10:30",
+      "classe": "3B"
+    },
+    {
+      "id": 10,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "11:00",
+      "classe": "3C"
+    },
+    {
+      "id": 11,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "11:00",
+      "classe": "3D"
+    },
+    {
+      "id": 12,
+      "data": "2026-09-02",
+      "titolo": "Consigli di Classe (2e-3e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.5,
+      "ora": "11:30",
+      "classe": "3F"
+    },
+    {
+      "id": 13,
+      "data": "2026-09-03",
+      "titolo": "Riunione di plesso",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "09:00"
+    },
+    {
+      "id": 14,
+      "data": "2026-09-03",
+      "titolo": "Consigli di Classe (1e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.75,
+      "ora": "11:00",
+      "classe": "1C"
+    },
+    {
+      "id": 15,
+      "data": "2026-09-03",
+      "titolo": "Consigli di Classe (1e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.75,
+      "ora": "11:00",
+      "classe": "1D"
+    },
+    {
+      "id": 16,
+      "data": "2026-09-03",
+      "titolo": "Consigli di Classe (1e)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 0.75,
+      "ora": "11:45",
+      "classe": "1A"
+    },
+    {
+      "id": 17,
+      "data": "2026-09-04",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 4,
+      "ora": "09:00"
+    },
+    {
+      "id": 18,
+      "data": "2026-09-07",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 4,
+      "ora": "09:00"
+    },
+    {
+      "id": 19,
+      "data": "2026-09-08",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 4,
+      "ora": "09:00"
+    },
+    {
+      "id": 20,
+      "data": "2026-09-08",
+      "titolo": "Incontro Famiglie Classi Prime (volontario)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 0.75,
+      "ora": "17:00",
+      "classe": "Prime"
+    },
+    {
+      "id": 21,
+      "data": "2026-09-09",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 4,
+      "ora": "09:00"
+    },
+    {
+      "id": 22,
+      "data": "2026-09-10",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "09:00"
+    },
+    {
+      "id": 23,
+      "data": "2026-09-10",
+      "titolo": "Dipartimenti disciplinari",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "11:30"
+    },
+    {
+      "id": 24,
+      "data": "2026-09-11",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "10:00"
+    },
+    {
+      "id": 25,
+      "data": "2026-09-21",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "16:45"
+    },
+    {
+      "id": 26,
+      "data": "2026-09-28",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "16:45"
+    },
+    {
+      "id": 27,
+      "data": "2026-10-01",
+      "titolo": "Dipartimenti disciplinari",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "15:00"
+    },
+    {
+      "id": 28,
+      "data": "2026-10-06",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1A"
+    },
+    {
+      "id": 29,
+      "data": "2026-10-06",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2B"
+    },
+    {
+      "id": 30,
+      "data": "2026-10-06",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2A"
+    },
+    {
+      "id": 31,
+      "data": "2026-10-06",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3B"
+    },
+    {
+      "id": 32,
+      "data": "2026-10-06",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3A"
+    },
+    {
+      "id": 33,
+      "data": "2026-10-07",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1C"
+    },
+    {
+      "id": 34,
+      "data": "2026-10-07",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1D"
+    },
+    {
+      "id": 35,
+      "data": "2026-10-07",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2C"
+    },
+    {
+      "id": 36,
+      "data": "2026-10-07",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2D"
+    },
+    {
+      "id": 37,
+      "data": "2026-10-07",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3C"
+    },
+    {
+      "id": 38,
+      "data": "2026-10-07",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3D"
+    },
+    {
+      "id": 39,
+      "data": "2026-10-08",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2F"
+    },
+    {
+      "id": 40,
+      "data": "2026-10-08",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3F"
+    },
+    {
+      "id": 41,
+      "data": "2026-10-12",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "16:45"
+    },
+    {
+      "id": 42,
+      "data": "2026-10-19",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "16:45"
+    },
+    {
+      "id": 43,
+      "data": "2026-10-20",
+      "titolo": "Elezione rappresentanti genitori",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 0.5,
+      "ora": "16:00"
+    },
+    {
+      "id": 44,
+      "data": "2026-10-22",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "17:00"
+    },
+    {
+      "id": 45,
+      "data": "2026-10-26",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "16:45"
+    },
+    {
+      "id": 46,
+      "data": "2026-11-09",
+      "titolo": "Formazione docenti DM38",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "16:45"
+    },
+    {
+      "id": 47,
+      "data": "2026-11-10",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3A"
+    },
+    {
+      "id": 48,
+      "data": "2026-11-10",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3B"
+    },
+    {
+      "id": 49,
+      "data": "2026-11-10",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "1A"
+    },
+    {
+      "id": 50,
+      "data": "2026-11-10",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2B"
+    },
+    {
+      "id": 51,
+      "data": "2026-11-10",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "2A"
+    },
+    {
+      "id": 52,
+      "data": "2026-11-11",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3C"
+    },
+    {
+      "id": 53,
+      "data": "2026-11-11",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3D"
+    },
+    {
+      "id": 54,
+      "data": "2026-11-11",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "1C"
+    },
+    {
+      "id": 55,
+      "data": "2026-11-11",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "1D"
+    },
+    {
+      "id": 56,
+      "data": "2026-11-11",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "2C"
+    },
+    {
+      "id": 57,
+      "data": "2026-11-11",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "2D"
+    },
+    {
+      "id": 58,
+      "data": "2026-11-12",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3F"
+    },
+    {
+      "id": 59,
+      "data": "2026-11-12",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2F"
+    },
+    {
+      "id": 60,
+      "data": "2026-12-09",
+      "titolo": "Ricevimento generale (A/B/C)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "15:30"
+    },
+    {
+      "id": 61,
+      "data": "2026-12-10",
+      "titolo": "Ricevimento generale (D/F)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "15:30"
+    },
+    {
+      "id": 62,
+      "data": "2026-12-17",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "17:00"
+    },
+    {
+      "id": 63,
+      "data": "2027-01-19",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2A"
+    },
+    {
+      "id": 64,
+      "data": "2027-01-19",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2B"
+    },
+    {
+      "id": 65,
+      "data": "2027-01-19",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3A"
+    },
+    {
+      "id": 66,
+      "data": "2027-01-19",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3B"
+    },
+    {
+      "id": 67,
+      "data": "2027-01-19",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "1A"
+    },
+    {
+      "id": 68,
+      "data": "2027-01-20",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2C"
+    },
+    {
+      "id": 69,
+      "data": "2027-01-20",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2D"
+    },
+    {
+      "id": 70,
+      "data": "2027-01-20",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3C"
+    },
+    {
+      "id": 71,
+      "data": "2027-01-20",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3D"
+    },
+    {
+      "id": 72,
+      "data": "2027-01-20",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "1C"
+    },
+    {
+      "id": 73,
+      "data": "2027-01-20",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "1D"
+    },
+    {
+      "id": 74,
+      "data": "2027-01-21",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2F"
+    },
+    {
+      "id": 75,
+      "data": "2027-01-21",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3F"
+    },
+    {
+      "id": 76,
+      "data": "2027-02-08",
+      "titolo": "Scrutini (corso A)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1A",
+      "stimata": true
+    },
+    {
+      "id": 77,
+      "data": "2027-02-08",
+      "titolo": "Scrutini (corso A)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2A",
+      "stimata": true
+    },
+    {
+      "id": 78,
+      "data": "2027-02-08",
+      "titolo": "Scrutini (corso A)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3A",
+      "stimata": true
+    },
+    {
+      "id": 79,
+      "data": "2027-02-09",
+      "titolo": "Scrutini (corso B)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2B",
+      "stimata": true
+    },
+    {
+      "id": 80,
+      "data": "2027-02-09",
+      "titolo": "Scrutini (corso B)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3B",
+      "stimata": true
+    },
+    {
+      "id": 81,
+      "data": "2027-02-10",
+      "titolo": "Scrutini (corso C)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1C",
+      "stimata": true
+    },
+    {
+      "id": 82,
+      "data": "2027-02-10",
+      "titolo": "Scrutini (corso C)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2C",
+      "stimata": true
+    },
+    {
+      "id": 83,
+      "data": "2027-02-10",
+      "titolo": "Scrutini (corso C)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3C",
+      "stimata": true
+    },
+    {
+      "id": 84,
+      "data": "2027-02-11",
+      "titolo": "Scrutini (corso D)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1D",
+      "stimata": true
+    },
+    {
+      "id": 85,
+      "data": "2027-02-11",
+      "titolo": "Scrutini (corso D)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2D",
+      "stimata": true
+    },
+    {
+      "id": 86,
+      "data": "2027-02-11",
+      "titolo": "Scrutini (corso D)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3D",
+      "stimata": true
+    },
+    {
+      "id": 87,
+      "data": "2027-02-12",
+      "titolo": "Scrutini (corso F)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2F",
+      "stimata": true
+    },
+    {
+      "id": 88,
+      "data": "2027-02-12",
+      "titolo": "Scrutini (corso F)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3F",
+      "stimata": true
+    },
+    {
+      "id": 89,
+      "data": "2027-02-23",
+      "titolo": "Riunione di plesso",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 1,
+      "ora": "15:00"
+    },
+    {
+      "id": 90,
+      "data": "2027-02-23",
+      "titolo": "Dipartimenti disciplinari",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 1,
+      "ora": "16:00"
+    },
+    {
+      "id": 91,
+      "data": "2027-03-09",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1A"
+    },
+    {
+      "id": 92,
+      "data": "2027-03-09",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3B"
+    },
+    {
+      "id": 93,
+      "data": "2027-03-09",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2A"
+    },
+    {
+      "id": 94,
+      "data": "2027-03-09",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2B"
+    },
+    {
+      "id": 95,
+      "data": "2027-03-09",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3A"
+    },
+    {
+      "id": 96,
+      "data": "2027-03-10",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1C"
+    },
+    {
+      "id": 97,
+      "data": "2027-03-10",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "1D"
+    },
+    {
+      "id": 98,
+      "data": "2027-03-10",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2C"
+    },
+    {
+      "id": 99,
+      "data": "2027-03-10",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2D"
+    },
+    {
+      "id": 100,
+      "data": "2027-03-10",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3C"
+    },
+    {
+      "id": 101,
+      "data": "2027-03-10",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "3D"
+    },
+    {
+      "id": 102,
+      "data": "2027-03-11",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3F"
+    },
+    {
+      "id": 103,
+      "data": "2027-03-11",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "2F"
+    },
+    {
+      "id": 104,
+      "data": "2027-03-18",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 1.5,
+      "ora": "17:00"
+    },
+    {
+      "id": 105,
+      "data": "2027-04-13",
+      "titolo": "Ricevimento generale (A/B/C)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "15:30"
+    },
+    {
+      "id": 106,
+      "data": "2027-04-14",
+      "titolo": "Ricevimento generale (D/F)",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "15:30"
+    },
+    {
+      "id": 107,
+      "data": "2027-04-20",
+      "titolo": "Dipartimenti disciplinari",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 1,
+      "ora": "15:00"
+    },
+    {
+      "id": 108,
+      "data": "2027-05-04",
+      "titolo": "Dipartimenti disciplinari",
+      "sede": "Tasso",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "15:00"
+    },
+    {
+      "id": 109,
+      "data": "2027-05-13",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "17:00"
+    },
+    {
+      "id": 110,
+      "data": "2027-05-18",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3A",
+      "stimata": true
+    },
+    {
+      "id": 111,
+      "data": "2027-05-18",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2B",
+      "stimata": true
+    },
+    {
+      "id": 112,
+      "data": "2027-05-18",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "1A",
+      "stimata": true
+    },
+    {
+      "id": 113,
+      "data": "2027-05-18",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3B",
+      "stimata": true
+    },
+    {
+      "id": 114,
+      "data": "2027-05-18",
+      "titolo": "Consigli di Classe (A/B)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "2A",
+      "stimata": true
+    },
+    {
+      "id": 115,
+      "data": "2027-05-19",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3C",
+      "stimata": true
+    },
+    {
+      "id": 116,
+      "data": "2027-05-19",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "3D",
+      "stimata": true
+    },
+    {
+      "id": 117,
+      "data": "2027-05-19",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "1C",
+      "stimata": true
+    },
+    {
+      "id": 118,
+      "data": "2027-05-19",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "1D",
+      "stimata": true
+    },
+    {
+      "id": 119,
+      "data": "2027-05-19",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "2C",
+      "stimata": true
+    },
+    {
+      "id": 120,
+      "data": "2027-05-19",
+      "titolo": "Consigli di Classe (C/D)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "17:00",
+      "classe": "2D",
+      "stimata": true
+    },
+    {
+      "id": 121,
+      "data": "2027-05-20",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "15:00",
+      "classe": "2F",
+      "stimata": true
+    },
+    {
+      "id": 122,
+      "data": "2027-05-20",
+      "titolo": "Consigli di Classe (F)",
+      "sede": "Tasso",
+      "categoria": "consigli",
+      "ore": 1,
+      "ora": "16:00",
+      "classe": "3F",
+      "stimata": true
+    },
+    {
+      "id": 123,
+      "data": "2027-06-04",
+      "titolo": "Scrutini (corso F)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "12:00",
+      "classe": "2F",
+      "stimata": true
+    },
+    {
+      "id": 124,
+      "data": "2027-06-04",
+      "titolo": "Scrutini (corso F)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "13:00",
+      "classe": "3F",
+      "stimata": true
+    },
+    {
+      "id": 125,
+      "data": "2027-06-05",
+      "titolo": "Scrutini (corsi A/B)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "08:00",
+      "classe": "1A",
+      "stimata": true
+    },
+    {
+      "id": 126,
+      "data": "2027-06-05",
+      "titolo": "Scrutini (corsi A/B)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "09:00",
+      "classe": "2A",
+      "stimata": true
+    },
+    {
+      "id": 127,
+      "data": "2027-06-05",
+      "titolo": "Scrutini (corsi A/B)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "10:00",
+      "classe": "3A",
+      "stimata": true
+    },
+    {
+      "id": 128,
+      "data": "2027-06-05",
+      "titolo": "Scrutini (corsi A/B)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "11:00",
+      "classe": "2B",
+      "stimata": true
+    },
+    {
+      "id": 129,
+      "data": "2027-06-05",
+      "titolo": "Scrutini (corsi A/B)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "12:00",
+      "classe": "3B",
+      "stimata": true
+    },
+    {
+      "id": 130,
+      "data": "2027-06-07",
+      "titolo": "Scrutini (corsi C/D)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "08:00",
+      "classe": "1C",
+      "stimata": true
+    },
+    {
+      "id": 131,
+      "data": "2027-06-07",
+      "titolo": "Scrutini (corsi C/D)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "09:00",
+      "classe": "2C",
+      "stimata": true
+    },
+    {
+      "id": 132,
+      "data": "2027-06-07",
+      "titolo": "Scrutini (corsi C/D)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "10:00",
+      "classe": "3C",
+      "stimata": true
+    },
+    {
+      "id": 133,
+      "data": "2027-06-07",
+      "titolo": "Scrutini (corsi C/D)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "11:00",
+      "classe": "1D",
+      "stimata": true
+    },
+    {
+      "id": 134,
+      "data": "2027-06-07",
+      "titolo": "Scrutini (corsi C/D)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "12:00",
+      "classe": "2D",
+      "stimata": true
+    },
+    {
+      "id": 135,
+      "data": "2027-06-07",
+      "titolo": "Scrutini (corsi C/D)",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "13:00",
+      "classe": "3D",
+      "stimata": true
+    },
+    {
+      "id": 136,
+      "data": "2027-06-07",
+      "titolo": "Riunione preliminare Esami di Stato",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "15:00",
+      "stimata": true
+    },
+    {
+      "id": 137,
+      "data": "2027-06-08",
+      "titolo": "Esame di Stato - Prova scritta Italiano",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 4,
+      "ora": "08:30",
+      "stimata": true
+    },
+    {
+      "id": 138,
+      "data": "2027-06-09",
+      "titolo": "Esame di Stato - Prova scritta Lingue Comunitarie",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:30",
+      "stimata": true
+    },
+    {
+      "id": 139,
+      "data": "2027-06-10",
+      "titolo": "Esame di Stato - Prova scritta Matematica",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:30",
+      "stimata": true
+    },
+    {
+      "id": 140,
+      "data": "2027-06-11",
+      "titolo": "Esame di Stato - Correzione collegiale prove scritte",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 2,
+      "ora": "15:00",
+      "stimata": true
+    },
+    {
+      "id": 141,
+      "data": "2027-06-14",
+      "titolo": "Esame di Stato - Colloqui orali 3B",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3B",
+      "stimata": true
+    },
+    {
+      "id": 142,
+      "data": "2027-06-15",
+      "titolo": "Esame di Stato - Colloqui orali 3B",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3B",
+      "stimata": true
+    },
+    {
+      "id": 143,
+      "data": "2027-06-15",
+      "titolo": "Esame di Stato - Colloqui orali 3A",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "15:00",
+      "classe": "3A",
+      "stimata": true
+    },
+    {
+      "id": 144,
+      "data": "2027-06-16",
+      "titolo": "Esame di Stato - Colloqui orali 3A",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3A",
+      "stimata": true
+    },
+    {
+      "id": 145,
+      "data": "2027-06-17",
+      "titolo": "Esame di Stato - Colloqui orali 3C",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3C",
+      "stimata": true
+    },
+    {
+      "id": 146,
+      "data": "2027-06-18",
+      "titolo": "Esame di Stato - Colloqui orali 3C",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3C",
+      "stimata": true
+    },
+    {
+      "id": 147,
+      "data": "2027-06-18",
+      "titolo": "Esame di Stato - Colloqui orali 3D",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "15:00",
+      "classe": "3D",
+      "stimata": true
+    },
+    {
+      "id": 148,
+      "data": "2027-06-19",
+      "titolo": "Esame di Stato - Colloqui orali 3D",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3D",
+      "stimata": true
+    },
+    {
+      "id": 149,
+      "data": "2027-06-21",
+      "titolo": "Esame di Stato - Colloqui orali 3F",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3F",
+      "stimata": true
+    },
+    {
+      "id": 150,
+      "data": "2027-06-22",
+      "titolo": "Esame di Stato - Colloqui orali 3F",
+      "sede": "Tasso",
+      "categoria": "altro",
+      "ore": 3,
+      "ora": "08:00",
+      "classe": "3F",
+      "stimata": true
+    },
+    {
+      "id": 151,
+      "data": "2027-06-23",
+      "titolo": "Scrutini - Ratifica finale",
+      "sede": "Govoni",
+      "categoria": "altro",
+      "ore": 1,
+      "ora": "08:30",
+      "stimata": true
+    },
+    {
+      "id": 152,
+      "data": "2027-06-24",
+      "titolo": "Collegio dei Docenti",
+      "sede": "Govoni",
+      "categoria": "collegio",
+      "ore": 2,
+      "ora": "10:00"
+    }
+  ],
+  "modelli_ad_hoc": [
+    {
+      "titolo": "GLO",
+      "categoria": "consigli",
+      "ore_per_alunno": 1,
+      "descrizione": "1 ora per alunno certificato - Gruppo di Lavoro Operativo per l'inclusione"
+    },
+    {
+      "titolo": "GLO finale",
+      "categoria": "consigli",
+      "ore_per_alunno": 1,
+      "descrizione": "1 ora per alunno certificato - verifica PEI di fine anno"
+    }
+  ]
+}

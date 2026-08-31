@@ -1,0 +1,520 @@
+/* 40+40 — conteggio ore attività funzionali (CCNL scuola)
+   Tutto locale: nessun server, nessun account. I dati vivono in localStorage
+   sul telefono; il file data/piano.json contiene il calendario precaricato
+   dal Piano Annuale della scuola. */
+
+const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?} }
+const LS_EXTRA = "40piu40_extra";      // [ {id, data, titolo, categoria, ore, classe?, sede?, extra:true} ]
+const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[] }
+
+let PIANO = null;      // contenuto data/piano.json
+let STATO = {};
+let EXTRA = [];
+let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [] };
+let currentMainView = "oggi";
+
+/* ---------------------------------------------------------- utilità date */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function todayISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+function parseISO(s){
+  const [y,m,d] = s.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+function formatDataLunga(s){
+  const d = parseISO(s);
+  const txt = d.toLocaleDateString("it-IT", { weekday:"long", day:"numeric", month:"long" });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+function formatMeseAnno(s){
+  const d = parseISO(s);
+  const txt = d.toLocaleDateString("it-IT", { month:"long", year:"numeric" });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+function meseKey(s){ return s.slice(0,7); } // YYYY-MM
+
+function fmtOre(n){
+  n = Math.round(n*100)/100;
+  return (n % 1 === 0) ? String(n) : String(n).replace(".", ",");
+}
+
+/* ---------------------------------------------------------- storage */
+function load(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+function save(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }
+  catch(e){ console.warn("Salvataggio non riuscito", e); }
+}
+function loadState(){
+  STATO = load(LS_STATO, {});
+  EXTRA = load(LS_EXTRA, []);
+  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[]}, load(LS_SETTINGS, {}));
+}
+function getStato(id){
+  return STATO[id] || {};
+}
+function setStato(id, patch){
+  STATO[id] = Object.assign({}, STATO[id], patch);
+  save(LS_STATO, STATO);
+}
+
+/* ---------------------------------------------------------- dati unificati */
+function allActivities(){
+  const fromPiano = (PIANO && PIANO.attivita) ? PIANO.attivita : [];
+  return fromPiano.concat(EXTRA);
+}
+function effectiveCategoria(a){
+  const st = getStato(a.id);
+  return st.categoria || a.categoria;
+}
+function effectiveOre(a){
+  const st = getStato(a.id);
+  return (st.ore != null) ? st.ore : a.ore;
+}
+function isFatto(a){
+  const st = getStato(a.id);
+  if (a.extra) return st.fatto !== false; // extra: di default già svolta
+  return !!st.fatto;
+}
+function classeVisibile(a){
+  if (!a.classe) return true;
+  if (!SETTINGS.mieClassi || SETTINGS.mieClassi.length === 0) return true;
+  return SETTINGS.mieClassi.some(c => c.toLowerCase() === a.classe.toLowerCase());
+}
+
+function computeTotals(){
+  const tot = { collegio:0, consigli:0, altro:0 };
+  for (const a of allActivities()){
+    if (!isFatto(a)) continue;
+    const cat = effectiveCategoria(a);
+    const ore = effectiveOre(a) || 0;
+    if (tot[cat] != null) tot[cat] += ore; else tot.altro += ore;
+  }
+  return tot;
+}
+
+/* ---------------------------------------------------------- render: contatori */
+function renderContatori(){
+  const tot = computeTotals();
+  fillCounter("collegio", tot.collegio, SETTINGS.targetCollegio);
+  fillCounter("consigli", tot.consigli, SETTINGS.targetConsigli);
+}
+function fillCounter(cat, fatte, target){
+  document.getElementById(`c-${cat}-fatte`).textContent = fmtOre(fatte);
+  document.getElementById(`c-${cat}-target`).textContent = fmtOre(target);
+  const bar = document.getElementById(`bar-${cat}`);
+  const pct = target > 0 ? Math.min(100, (fatte/target)*100) : 0;
+  bar.style.width = pct + "%";
+  bar.classList.remove("full","over");
+  const sub = document.getElementById(`sub-${cat}`);
+  if (fatte > target){
+    bar.classList.add("over");
+    sub.textContent = `+${fmtOre(fatte-target)} ore oltre il tetto`;
+  } else if (fatte === target && target > 0){
+    bar.classList.add("full");
+    sub.textContent = "Tetto raggiunto";
+  } else {
+    sub.textContent = `${fmtOre(target-fatte)} ore ancora libere`;
+  }
+}
+
+/* ---------------------------------------------------------- render: card */
+function tagLabel(cat){
+  return cat === "collegio" ? "Collegio" : cat === "consigli" ? "Consigli" : "Altro";
+}
+function creaCard(a){
+  const div = document.createElement("div");
+  const fatto = isFatto(a);
+  div.className = "card" + (fatto ? " done" : "");
+
+  const top = document.createElement("div");
+  top.className = "card-top";
+
+  const left = document.createElement("div");
+  const title = document.createElement("div");
+  title.className = "card-title";
+  title.textContent = a.titolo + (a.classe ? ` · ${a.classe}` : "");
+  const meta = document.createElement("div");
+  meta.className = "card-meta";
+  const bits = [formatDataLunga(a.data)];
+  if (a.ora) bits.push(a.ora);
+  if (a.sede) bits.push(a.sede);
+  meta.textContent = bits.join(" · ");
+  left.appendChild(title); left.appendChild(meta);
+
+  const tag = document.createElement("span");
+  const cat = effectiveCategoria(a);
+  tag.className = "tag tag-" + cat;
+  tag.textContent = tagLabel(cat);
+
+  top.appendChild(left); top.appendChild(tag);
+  div.appendChild(top);
+
+  const actions = document.createElement("div");
+  actions.className = "card-actions";
+
+  if (fatto){
+    const btn = document.createElement("button");
+    btn.className = "btn btn-done";
+    btn.textContent = `✓ ${fmtOre(effectiveOre(a))} ore`;
+    btn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {fatto:false}); refreshAll(); };
+    actions.appendChild(btn);
+  } else {
+    const btn = document.createElement("button");
+    btn.className = "btn btn-primary";
+    btn.textContent = "Ho partecipato";
+    btn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {fatto:true}); refreshAll(); };
+    actions.appendChild(btn);
+  }
+  const modBtn = document.createElement("button");
+  modBtn.className = "btn btn-ghost";
+  modBtn.textContent = "Modifica";
+  modBtn.onclick = (e) => { e.stopPropagation(); openDetailSheet(a); };
+  actions.appendChild(modBtn);
+
+  div.appendChild(actions);
+  div.onclick = () => openDetailSheet(a);
+  return div;
+}
+
+/* ---------------------------------------------------------- render: Oggi */
+function renderOggi(){
+  document.getElementById("oggi-data").textContent = formatDataLunga(todayISO());
+  const lista = document.getElementById("oggi-lista");
+  lista.innerHTML = "";
+  const oggi = allActivities()
+    .filter(a => a.data === todayISO())
+    .filter(classeVisibile)
+    .sort((a,b) => (a.ora||"").localeCompare(b.ora||""));
+  if (oggi.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "Nessuna attività in programma oggi.\nUsa + per registrarne una non prevista.";
+    lista.appendChild(empty);
+    return;
+  }
+  oggi.forEach(a => lista.appendChild(creaCard(a)));
+}
+
+/* ---------------------------------------------------------- render: Calendario */
+function popolaFiltroMesi(){
+  const sel = document.getElementById("filtro-mese");
+  const mesi = [...new Set(allActivities()
+    .filter(a => a.categoria === "collegio" || a.categoria === "consigli")
+    .map(a => meseKey(a.data)))].sort();
+  sel.innerHTML = `<option value="tutti">Tutti i mesi</option>` +
+    mesi.map(m => `<option value="${m}">${formatMeseAnno(m+"-01")}</option>`).join("");
+}
+function renderCalendario(){
+  const lista = document.getElementById("calendario-lista");
+  lista.innerHTML = "";
+  const meseSel = document.getElementById("filtro-mese").value;
+  const statoSel = document.getElementById("filtro-stato").value;
+
+  let items = allActivities()
+    .filter(a => a.categoria === "collegio" || a.categoria === "consigli")
+    .filter(classeVisibile)
+    .filter(a => meseSel === "tutti" || meseKey(a.data) === meseSel)
+    .filter(a => statoSel === "tutte" || (statoSel === "fatte") === isFatto(a))
+    .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(a.ora||"")));
+
+  if (items.length === 0){
+    lista.innerHTML = `<div class="empty-state">Nessuna attività con questi filtri.</div>`;
+    return;
+  }
+  let meseCorrente = null;
+  for (const a of items){
+    const mk = meseKey(a.data);
+    if (mk !== meseCorrente){
+      meseCorrente = mk;
+      const h = document.createElement("div");
+      h.className = "month-heading";
+      h.textContent = formatMeseAnno(a.data);
+      lista.appendChild(h);
+    }
+    lista.appendChild(creaCard(a));
+  }
+}
+
+/* ---------------------------------------------------------- render: Altro (fuori tetto) */
+function renderAltro(){
+  const lista = document.getElementById("altro-lista");
+  lista.innerHTML = "";
+  const items = allActivities()
+    .filter(a => effectiveCategoria(a) === "altro")
+    .filter(classeVisibile)
+    .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(a.ora||"")));
+  if (items.length === 0){
+    lista.innerHTML = `<div class="empty-state">Nessuna attività qui.</div>`;
+    return;
+  }
+  let meseCorrente = null;
+  for (const a of items){
+    const mk = meseKey(a.data);
+    if (mk !== meseCorrente){
+      meseCorrente = mk;
+      const h = document.createElement("div");
+      h.className = "month-heading";
+      h.textContent = formatMeseAnno(a.data);
+      lista.appendChild(h);
+    }
+    lista.appendChild(creaCard(a));
+  }
+}
+
+/* ---------------------------------------------------------- Impostazioni */
+function renderImpostazioni(){
+  document.getElementById("input-target-collegio").value = SETTINGS.targetCollegio;
+  document.getElementById("input-target-consigli").value = SETTINGS.targetConsigli;
+  document.getElementById("input-mie-classi").value = (SETTINGS.mieClassi || []).join(", ");
+  if (PIANO){
+    document.getElementById("info-piano").textContent =
+      `${PIANO.istituto || ""} — a.s. ${PIANO.anno_scolastico || ""}. Fonte: ${PIANO.fonte || ""}.`;
+  }
+}
+function salvaImpostazioni(){
+  SETTINGS.targetCollegio = parseFloat(document.getElementById("input-target-collegio").value) || 0;
+  SETTINGS.targetConsigli = parseFloat(document.getElementById("input-target-consigli").value) || 0;
+  SETTINGS.mieClassi = document.getElementById("input-mie-classi").value
+    .split(",").map(s => s.trim()).filter(Boolean);
+  save(LS_SETTINGS, SETTINGS);
+  refreshAll();
+}
+
+/* ---------------------------------------------------------- Bottom sheet: dettaglio */
+function openDetailSheet(a){
+  const st = getStato(a.id);
+  const cat = effectiveCategoria(a);
+  const ore = effectiveOre(a);
+  const fatto = isFatto(a);
+  const html = `
+    <h2>${a.titolo}${a.classe ? " · " + a.classe : ""}</h2>
+    <div class="hint">${formatDataLunga(a.data)}${a.ora ? " · " + a.ora : ""}${a.sede ? " · " + a.sede : ""}</div>
+    <label>Categoria</label>
+    <select id="d-categoria">
+      <option value="collegio" ${cat==="collegio"?"selected":""}>Collegio (40h)</option>
+      <option value="consigli" ${cat==="consigli"?"selected":""}>Consigli (40h)</option>
+      <option value="altro" ${cat==="altro"?"selected":""}>Altro (fuori tetto)</option>
+    </select>
+    <label>Ore effettive</label>
+    <input type="number" id="d-ore" min="0" step="0.25" value="${ore}">
+    <label><input type="checkbox" id="d-fatto" ${fatto?"checked":""}> Attività svolta</label>
+    <div class="sheet-actions">
+      ${a.extra ? '<button class="btn btn-ghost" id="d-elimina">Elimina</button>' : ""}
+      <button class="btn btn-primary" id="d-salva">Salva</button>
+    </div>
+  `;
+  showSheet(html);
+  document.getElementById("d-salva").onclick = () => {
+    const nuovaCat = document.getElementById("d-categoria").value;
+    const nuoveOre = parseFloat(document.getElementById("d-ore").value) || 0;
+    const nuovoFatto = document.getElementById("d-fatto").checked;
+    if (a.extra){
+      const idx = EXTRA.findIndex(x => x.id === a.id);
+      if (idx >= 0){ EXTRA[idx].categoria = nuovaCat; EXTRA[idx].ore = nuoveOre; save(LS_EXTRA, EXTRA); }
+      setStato(a.id, {fatto:nuovoFatto});
+    } else {
+      setStato(a.id, {categoria: nuovaCat === a.categoria ? undefined : nuovaCat, ore: nuoveOre === a.ore ? undefined : nuoveOre, fatto: nuovoFatto});
+    }
+    closeSheet();
+    refreshAll();
+  };
+  const delBtn = document.getElementById("d-elimina");
+  if (delBtn) delBtn.onclick = () => {
+    EXTRA = EXTRA.filter(x => x.id !== a.id);
+    save(LS_EXTRA, EXTRA);
+    delete STATO[a.id];
+    save(LS_STATO, STATO);
+    closeSheet();
+    refreshAll();
+  };
+}
+
+/* ---------------------------------------------------------- Bottom sheet: aggiungi */
+function openAddSheet(){
+  const html = `
+    <h2>Nuova attività</h2>
+    <div class="sheet-actions" style="margin-top:0;margin-bottom:6px;">
+      <button class="btn btn-ghost" id="tpl-generica">Generica</button>
+      <button class="btn btn-ghost" id="tpl-glo">GLO</button>
+    </div>
+    <label>Titolo</label>
+    <input type="text" id="a-titolo" value="Attività">
+    <label>Data</label>
+    <input type="date" id="a-data" value="${todayISO()}">
+    <label>Categoria</label>
+    <select id="a-categoria">
+      <option value="collegio">Collegio (40h)</option>
+      <option value="consigli" selected>Consigli (40h)</option>
+      <option value="altro">Altro (fuori tetto)</option>
+    </select>
+    <div id="a-glo-box" class="hidden">
+      <label>Alunni certificati</label>
+      <input type="number" id="a-alunni" min="1" step="1" value="1">
+    </div>
+    <label>Ore</label>
+    <input type="number" id="a-ore" min="0" step="0.25" value="1">
+    <label>Classe (facoltativo)</label>
+    <input type="text" id="a-classe" placeholder="es. 2A">
+    <label><input type="checkbox" id="a-fatto" checked> Segna già come svolta</label>
+    <div class="sheet-actions">
+      <button class="btn btn-primary" id="a-salva">Aggiungi</button>
+    </div>
+  `;
+  showSheet(html);
+
+  document.getElementById("tpl-generica").onclick = () => {
+    document.getElementById("a-titolo").value = "Attività";
+    document.getElementById("a-categoria").value = "consigli";
+    document.getElementById("a-glo-box").classList.add("hidden");
+  };
+  document.getElementById("tpl-glo").onclick = () => {
+    document.getElementById("a-titolo").value = "GLO";
+    document.getElementById("a-categoria").value = "consigli";
+    document.getElementById("a-glo-box").classList.remove("hidden");
+    aggiornaOreGlo();
+  };
+  document.getElementById("a-salva").onclick = () => {
+    const nuovo = {
+      id: "extra-" + Date.now(),
+      data: document.getElementById("a-data").value || todayISO(),
+      titolo: document.getElementById("a-titolo").value.trim() || "Attività",
+      categoria: document.getElementById("a-categoria").value,
+      ore: parseFloat(document.getElementById("a-ore").value) || 0,
+      classe: document.getElementById("a-classe").value.trim() || undefined,
+      extra: true
+    };
+    EXTRA.push(nuovo);
+    save(LS_EXTRA, EXTRA);
+    setStato(nuovo.id, {fatto: document.getElementById("a-fatto").checked});
+    closeSheet();
+    refreshAll();
+  };
+}
+function aggiornaOreGlo(){
+  const box = document.getElementById("a-glo-box");
+  if (box.classList.contains("hidden")) return;
+  const alunni = parseFloat(document.getElementById("a-alunni").value) || 0;
+  document.getElementById("a-ore").value = alunni;
+}
+
+/* ---------------------------------------------------------- Sheet generico */
+function showSheet(html){
+  document.getElementById("sheet-content").innerHTML = html;
+  document.getElementById("sheet").classList.remove("hidden");
+  document.getElementById("sheet-backdrop").classList.remove("hidden");
+  const gloAlunni = document.getElementById("a-alunni");
+  if (gloAlunni) gloAlunni.oninput = aggiornaOreGlo;
+}
+function closeSheet(){
+  document.getElementById("sheet").classList.add("hidden");
+  document.getElementById("sheet-backdrop").classList.add("hidden");
+}
+
+/* ---------------------------------------------------------- Navigazione */
+function showView(name){
+  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+  document.getElementById("view-" + name).classList.remove("hidden");
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
+  const isSecondary = (name === "impostazioni");
+  document.getElementById("tabbar").classList.toggle("hidden", isSecondary);
+  document.getElementById("btn-add").classList.toggle("hidden", isSecondary);
+  if (!isSecondary) currentMainView = name;
+  window.scrollTo(0,0);
+}
+function refreshAll(){
+  renderContatori();
+  renderOggi();
+  popolaFiltroMesi();
+  renderCalendario();
+  renderAltro();
+}
+
+/* ---------------------------------------------------------- Backup */
+function esportaBackup(){
+  const payload = { stato: STATO, extra: EXTRA, settings: SETTINGS, esportato: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup-40piu40-${todayISO()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importaBackup(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if (data.stato) { STATO = data.stato; save(LS_STATO, STATO); }
+      if (data.extra) { EXTRA = data.extra; save(LS_EXTRA, EXTRA); }
+      if (data.settings) { SETTINGS = Object.assign(SETTINGS, data.settings); save(LS_SETTINGS, SETTINGS); }
+      renderImpostazioni();
+      refreshAll();
+      alert("Backup importato.");
+    }catch(e){
+      alert("Il file non sembra un backup valido.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------------------------------------------------------- Avvio */
+async function init(){
+  loadState();
+  try{
+    const res = await fetch("./data/piano.json");
+    PIANO = await res.json();
+    if (!load(LS_SETTINGS, null)){
+      SETTINGS.targetCollegio = PIANO.target_ore?.collegio ?? 40;
+      SETTINGS.targetConsigli = PIANO.target_ore?.consigli ?? 40;
+      save(LS_SETTINGS, SETTINGS);
+    }
+  }catch(e){
+    console.error("Impossibile caricare data/piano.json", e);
+    PIANO = { attivita: [] };
+  }
+
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => showView(btn.dataset.view));
+  });
+  document.querySelectorAll("[data-back]").forEach(btn => {
+    btn.addEventListener("click", () => showView(currentMainView));
+  });
+  document.getElementById("btn-settings").addEventListener("click", () => {
+    renderImpostazioni();
+    showView("impostazioni");
+  });
+  document.getElementById("btn-add").addEventListener("click", openAddSheet);
+  document.getElementById("sheet-backdrop").addEventListener("click", closeSheet);
+
+  document.getElementById("filtro-mese").addEventListener("change", renderCalendario);
+  document.getElementById("filtro-stato").addEventListener("change", renderCalendario);
+
+  document.getElementById("input-target-collegio").addEventListener("change", salvaImpostazioni);
+  document.getElementById("input-target-consigli").addEventListener("change", salvaImpostazioni);
+  document.getElementById("input-mie-classi").addEventListener("change", salvaImpostazioni);
+
+  document.getElementById("btn-export").addEventListener("click", esportaBackup);
+  document.getElementById("btn-import").addEventListener("click", () => document.getElementById("input-import").click());
+  document.getElementById("input-import").addEventListener("change", (e) => {
+    if (e.target.files[0]) importaBackup(e.target.files[0]);
+  });
+
+  refreshAll();
+  showView("oggi");
+
+  if ("serviceWorker" in navigator){
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+
+document.addEventListener("DOMContentLoaded", init);
