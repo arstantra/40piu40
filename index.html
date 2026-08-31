@@ -28,13 +28,19 @@
     <div class="counter">
       <div class="counter-label">Collegio</div>
       <div class="counter-value"><span id="c-collegio-fatte">0</span><span class="counter-target">/<span id="c-collegio-target">40</span> ore</span></div>
-      <div class="progress"><div class="progress-bar" id="bar-collegio"></div></div>
+      <div class="progress">
+        <div class="progress-seg progress-blue" id="bar-collegio-blue"></div>
+        <div class="progress-seg progress-red" id="bar-collegio-red"></div>
+      </div>
       <div class="counter-sub" id="sub-collegio"></div>
     </div>
     <div class="counter">
       <div class="counter-label">Consigli</div>
       <div class="counter-value"><span id="c-consigli-fatte">0</span><span class="counter-target">/<span id="c-consigli-target">40</span> ore</span></div>
-      <div class="progress"><div class="progress-bar" id="bar-consigli"></div></div>
+      <div class="progress">
+        <div class="progress-seg progress-blue" id="bar-consigli-blue"></div>
+        <div class="progress-seg progress-red" id="bar-consigli-red"></div>
+      </div>
       <div class="counter-sub" id="sub-consigli"></div>
     </div>
   </section>
@@ -92,6 +98,12 @@
     <button class="btn-secondary" id="btn-export">Esporta backup</button>
     <button class="btn-secondary" id="btn-import">Importa backup</button>
     <input type="file" id="input-import" accept="application/json" class="hidden">
+  </section>
+
+  <section class="settings-block">
+    <h2>Zona pericolosa</h2>
+    <p class="hint">Utile dopo aver fatto delle prove: cancella tutte le presenze e le attività aggiunte, il calendario del Piano Annuale resta. Non si può annullare — esporta prima un backup se vuoi conservare qualcosa.</p>
+    <button class="btn-secondary btn-danger" id="btn-reset">Azzera tutti i dati</button>
   </section>
 
   <section class="settings-block">

@@ -3,7 +3,7 @@
    sul telefono; il file data/piano.json contiene il calendario precaricato
    dal Piano Annuale della scuola. */
 
-const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?} }
+const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?} }
 const LS_EXTRA = "40piu40_extra";      // [ {id, data, titolo, categoria, ore, classe?, sede?, extra:true} ]
 const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[] }
 
@@ -38,6 +38,23 @@ function meseKey(s){ return s.slice(0,7); } // YYYY-MM
 function fmtOre(n){
   n = Math.round(n*100)/100;
   return (n % 1 === 0) ? String(n) : String(n).replace(".", ",");
+}
+function oraOra(){
+  const d = new Date();
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function orarioInMinuti(hhmm){
+  if (!hhmm) return null;
+  const [h,m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h*60+m;
+}
+function oreDaOrari(inizio, fine){
+  const a = orarioInMinuti(inizio), b = orarioInMinuti(fine);
+  if (a == null || b == null) return null;
+  let diff = b - a;
+  if (diff < 0) diff += 24*60; // fine prima di inizio: riunione a cavallo di mezzanotte
+  return Math.round((diff/60)*100)/100;
 }
 
 /* ---------------------------------------------------------- storage */
@@ -82,6 +99,10 @@ function isFatto(a){
   if (a.extra) return st.fatto !== false; // extra: di default già svolta
   return !!st.fatto;
 }
+function isInCorso(a){
+  const st = getStato(a.id);
+  return !!st.inizio && !st.fine && !isFatto(a);
+}
 function classeVisibile(a){
   if (!a.classe) return true;
   if (!SETTINGS.mieClassi || SETTINGS.mieClassi.length === 0) return true;
@@ -108,16 +129,23 @@ function renderContatori(){
 function fillCounter(cat, fatte, target){
   document.getElementById(`c-${cat}-fatte`).textContent = fmtOre(fatte);
   document.getElementById(`c-${cat}-target`).textContent = fmtOre(target);
-  const bar = document.getElementById(`bar-${cat}`);
-  const pct = target > 0 ? Math.min(100, (fatte/target)*100) : 0;
-  bar.style.width = pct + "%";
-  bar.classList.remove("full","over");
+
+  // La barra rappresenta sempre il totale corrente (target oppure, se lo sforo
+  // supera il target, le ore fatte): blu = entro il tetto, rosso = sforo.
+  const scale = Math.max(target, fatte, 1);
+  const entro = Math.min(fatte, target);
+  const oltre = Math.max(0, fatte - target);
+  const barBlue = document.getElementById(`bar-${cat}-blue`);
+  const barRed = document.getElementById(`bar-${cat}-red`);
+  barBlue.style.width = (entro/scale*100) + "%";
+  barRed.style.width = (oltre/scale*100) + "%";
+  barBlue.classList.toggle("full", target > 0 && fatte === target);
+
   const sub = document.getElementById(`sub-${cat}`);
+  sub.classList.toggle("over", fatte > target);
   if (fatte > target){
-    bar.classList.add("over");
     sub.textContent = `+${fmtOre(fatte-target)} ore oltre il tetto`;
   } else if (fatte === target && target > 0){
-    bar.classList.add("full");
     sub.textContent = "Tetto raggiunto";
   } else {
     sub.textContent = `${fmtOre(target-fatte)} ore ancora libere`;
@@ -131,6 +159,8 @@ function tagLabel(cat){
 function creaCard(a){
   const div = document.createElement("div");
   const fatto = isFatto(a);
+  const inCorso = isInCorso(a);
+  const st = getStato(a.id);
   div.className = "card" + (fatto ? " done" : "");
 
   const top = document.createElement("div");
@@ -156,14 +186,34 @@ function creaCard(a){
   top.appendChild(left); top.appendChild(tag);
   div.appendChild(top);
 
+  if (inCorso){
+    const badge = document.createElement("div");
+    badge.className = "in-corso-badge";
+    badge.textContent = `In corso dalle ${st.inizio}`;
+    div.appendChild(badge);
+  }
+
   const actions = document.createElement("div");
   actions.className = "card-actions";
 
   if (fatto){
+    const orari = (st.inizio && st.fine) ? ` (${st.inizio}–${st.fine})` : "";
     const btn = document.createElement("button");
     btn.className = "btn btn-done";
-    btn.textContent = `✓ ${fmtOre(effectiveOre(a))} ore`;
+    btn.textContent = `✓ ${fmtOre(effectiveOre(a))} ore${orari}`;
     btn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {fatto:false}); refreshAll(); };
+    actions.appendChild(btn);
+  } else if (inCorso){
+    const btn = document.createElement("button");
+    btn.className = "btn btn-progress";
+    btn.textContent = "Termina";
+    btn.onclick = (e) => { e.stopPropagation(); terminaAttivita(a); };
+    actions.appendChild(btn);
+  } else if (a.data === todayISO()){
+    const btn = document.createElement("button");
+    btn.className = "btn btn-primary";
+    btn.textContent = "Inizia";
+    btn.onclick = (e) => { e.stopPropagation(); iniziaAttivita(a); };
     actions.appendChild(btn);
   } else {
     const btn = document.createElement("button");
@@ -181,6 +231,19 @@ function creaCard(a){
   div.appendChild(actions);
   div.onclick = () => openDetailSheet(a);
   return div;
+}
+
+/* ---------------------------------------------------------- timer riunione */
+function iniziaAttivita(a){
+  setStato(a.id, {inizio: oraOra(), fine: undefined});
+  refreshAll();
+}
+function terminaAttivita(a){
+  const st = getStato(a.id);
+  const fine = oraOra();
+  const ore = oreDaOrari(st.inizio, fine);
+  setStato(a.id, {fine, ore: ore != null ? ore : effectiveOre(a), fatto:true});
+  refreshAll();
 }
 
 /* ---------------------------------------------------------- render: Oggi */
@@ -302,8 +365,13 @@ function openDetailSheet(a){
       <option value="consigli" ${cat==="consigli"?"selected":""}>Consigli (40h)</option>
       <option value="altro" ${cat==="altro"?"selected":""}>Altro (fuori tetto)</option>
     </select>
+    <label>Ora inizio / ora fine (facoltativo)</label>
+    <div style="display:flex;gap:10px;">
+      <input type="time" id="d-inizio" value="${st.inizio || ""}" style="flex:1;">
+      <input type="time" id="d-fine" value="${st.fine || ""}" style="flex:1;">
+    </div>
     <label>Ore effettive</label>
-    <input type="number" id="d-ore" min="0" step="0.25" value="${ore}">
+    <input type="number" id="d-ore" min="0" step="0.05" value="${ore}">
     <label><input type="checkbox" id="d-fatto" ${fatto?"checked":""}> Attività svolta</label>
     <div class="sheet-actions">
       ${a.extra ? '<button class="btn btn-ghost" id="d-elimina">Elimina</button>' : ""}
@@ -311,16 +379,34 @@ function openDetailSheet(a){
     </div>
   `;
   showSheet(html);
+
+  const ricalcola = () => {
+    const i = document.getElementById("d-inizio").value;
+    const f = document.getElementById("d-fine").value;
+    const calcolate = oreDaOrari(i, f);
+    if (calcolate != null) document.getElementById("d-ore").value = calcolate;
+  };
+  document.getElementById("d-inizio").addEventListener("change", ricalcola);
+  document.getElementById("d-fine").addEventListener("change", ricalcola);
+
   document.getElementById("d-salva").onclick = () => {
     const nuovaCat = document.getElementById("d-categoria").value;
     const nuoveOre = parseFloat(document.getElementById("d-ore").value) || 0;
     const nuovoFatto = document.getElementById("d-fatto").checked;
+    const nuovoInizio = document.getElementById("d-inizio").value || undefined;
+    const nuovaFine = document.getElementById("d-fine").value || undefined;
     if (a.extra){
       const idx = EXTRA.findIndex(x => x.id === a.id);
       if (idx >= 0){ EXTRA[idx].categoria = nuovaCat; EXTRA[idx].ore = nuoveOre; save(LS_EXTRA, EXTRA); }
-      setStato(a.id, {fatto:nuovoFatto});
+      setStato(a.id, {fatto:nuovoFatto, inizio:nuovoInizio, fine:nuovaFine});
     } else {
-      setStato(a.id, {categoria: nuovaCat === a.categoria ? undefined : nuovaCat, ore: nuoveOre === a.ore ? undefined : nuoveOre, fatto: nuovoFatto});
+      setStato(a.id, {
+        categoria: nuovaCat === a.categoria ? undefined : nuovaCat,
+        ore: nuoveOre === a.ore ? undefined : nuoveOre,
+        fatto: nuovoFatto,
+        inizio: nuovoInizio,
+        fine: nuovaFine
+      });
     }
     closeSheet();
     refreshAll();
@@ -449,6 +535,16 @@ function esportaBackup(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+function azzeraTutto(){
+  const ok = confirm("Cancellare tutte le presenze registrate e le attività aggiunte a mano? Non si può annullare.\n\nIl calendario del Piano Annuale resta, solo lo storico di ciò che hai segnato viene azzerato.");
+  if (!ok) return;
+  STATO = {};
+  EXTRA = [];
+  save(LS_STATO, STATO);
+  save(LS_EXTRA, EXTRA);
+  refreshAll();
+  alert("Dati azzerati.");
+}
 function importaBackup(file){
   const reader = new FileReader();
   reader.onload = () => {
@@ -508,6 +604,7 @@ async function init(){
   document.getElementById("input-import").addEventListener("change", (e) => {
     if (e.target.files[0]) importaBackup(e.target.files[0]);
   });
+  document.getElementById("btn-reset").addEventListener("click", azzeraTutto);
 
   refreshAll();
   showView("oggi");
