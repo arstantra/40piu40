@@ -83,13 +83,18 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 }
 .counter{
   flex:1;
+  min-width:0;
   background:var(--bg-soft);
   border-radius:14px;
-  padding:14px 16px;
+  padding:14px 14px 12px;
 }
 .counter-label{font-size:13px;color:var(--text-light);font-weight:500;}
-.counter-value{font-size:24px;font-weight:500;margin-top:2px;}
-.counter-target{font-size:14px;color:var(--text-light);font-weight:400;}
+.counter-split{display:flex;gap:8px;margin-top:6px;}
+.cs{flex:1;min-width:0;}
+.cs-num{font-size:23px;font-weight:500;line-height:1.15;}
+.cs-num.cs-rest{color:var(--text-light);}
+.cs-num.over{color:var(--red);}
+.cs-lab{font-size:10.5px;line-height:1.25;color:var(--text-light);margin-top:2px;}
 .progress{
   height:6px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:10px;
   display:flex;
@@ -98,8 +103,7 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .progress-blue{background:var(--blue);}
 .progress-blue.full{background:var(--green);}
 .progress-red{background:var(--red);}
-.counter-sub{font-size:12px;color:var(--text-light);margin-top:6px;min-height:14px;}
-.counter-sub.over{color:var(--red);font-weight:500;}
+.counter-total{font-size:11.5px;color:var(--text-light);margin-top:7px;}
 
 /* ---------- Oggi ---------- */
 .oggi-section{margin-top:26px;}
@@ -130,7 +134,9 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .tag-collegio{background:#e8f0fe;color:var(--blue);}
 .tag-consigli{background:#e6f4ea;color:var(--green);}
 .tag-altro{background:#f1f3f4;color:var(--text-light);}
-.card-actions{display:flex;gap:8px;margin-top:6px;align-items:center;}
+.card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;align-items:center;}
+.card.nascosta{opacity:.5;}
+.card.nascosta .card-title{font-weight:400;}
 
 .btn{
   border:none;
@@ -145,6 +151,7 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .btn-done{background:var(--green);color:#fff;}
 .btn-progress{background:var(--amber);color:#fff;}
 .btn-ghost{background:none;color:var(--text-light);border:1px solid var(--border);}
+.btn-mini{padding:9px 13px;font-size:13px;}
 .btn-secondary{
   background:var(--bg-soft);
   color:var(--text);

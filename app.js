@@ -3,7 +3,7 @@
    sul telefono; il file data/piano.json contiene il calendario precaricato
    dal Piano Annuale della scuola. */
 
-const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?} }
+const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?, nascosto?} }
 const LS_EXTRA = "40piu40_extra";      // [ {id, data, titolo, categoria, ore, classe?, sede?, extra:true} ]
 const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[] }
 
@@ -103,6 +103,9 @@ function isInCorso(a){
   const st = getStato(a.id);
   return !!st.inizio && !st.fine && !isFatto(a);
 }
+function isNascosto(a){
+  return !!getStato(a.id).nascosto;
+}
 function classeVisibile(a){
   if (!a.classe) return true;
   if (!SETTINGS.mieClassi || SETTINGS.mieClassi.length === 0) return true;
@@ -112,6 +115,7 @@ function classeVisibile(a){
 function computeTotals(){
   const tot = { collegio:0, consigli:0, altro:0 };
   for (const a of allActivities()){
+    if (isNascosto(a)) continue;
     if (!isFatto(a)) continue;
     const cat = effectiveCategoria(a);
     const ore = effectiveOre(a) || 0;
@@ -127,41 +131,46 @@ function renderContatori(){
   fillCounter("consigli", tot.consigli, SETTINGS.targetConsigli);
 }
 function fillCounter(cat, fatte, target){
+  const oltre = Math.max(0, fatte - target);
   document.getElementById(`c-${cat}-fatte`).textContent = fmtOre(fatte);
   document.getElementById(`c-${cat}-target`).textContent = fmtOre(target);
+
+  // Seconda colonna: quante ore restano da svolgere; se il tetto e' superato,
+  // mostra invece di quanto si e' andati oltre.
+  const rest = document.getElementById(`c-${cat}-restanti`);
+  const restLab = document.getElementById(`lab-${cat}-restanti`);
+  rest.classList.toggle("over", oltre > 0);
+  if (oltre > 0){
+    rest.textContent = "+" + fmtOre(oltre);
+    restLab.textContent = "oltre";
+  } else {
+    rest.textContent = fmtOre(target - fatte);
+    restLab.textContent = "da svolgere";
+  }
 
   // La barra rappresenta sempre il totale corrente (target oppure, se lo sforo
   // supera il target, le ore fatte): blu = entro il tetto, rosso = sforo.
   const scale = Math.max(target, fatte, 1);
   const entro = Math.min(fatte, target);
-  const oltre = Math.max(0, fatte - target);
   const barBlue = document.getElementById(`bar-${cat}-blue`);
   const barRed = document.getElementById(`bar-${cat}-red`);
   barBlue.style.width = (entro/scale*100) + "%";
   barRed.style.width = (oltre/scale*100) + "%";
-  barBlue.classList.toggle("full", target > 0 && fatte === target);
-
-  const sub = document.getElementById(`sub-${cat}`);
-  sub.classList.toggle("over", fatte > target);
-  if (fatte > target){
-    sub.textContent = `+${fmtOre(fatte-target)} ore oltre il tetto`;
-  } else if (fatte === target && target > 0){
-    sub.textContent = "Tetto raggiunto";
-  } else {
-    sub.textContent = `${fmtOre(target-fatte)} ore ancora libere`;
-  }
+  barBlue.classList.toggle("full", target > 0 && fatte >= target);
 }
 
 /* ---------------------------------------------------------- render: card */
 function tagLabel(cat){
   return cat === "collegio" ? "Collegio" : cat === "consigli" ? "Consigli" : "Altro";
 }
-function creaCard(a){
+function creaCard(a, opts){
+  opts = opts || {};
   const div = document.createElement("div");
+  const nascosto = isNascosto(a);
   const fatto = isFatto(a);
   const inCorso = isInCorso(a);
   const st = getStato(a.id);
-  div.className = "card" + (fatto ? " done" : "");
+  div.className = "card" + (fatto ? " done" : "") + (nascosto ? " nascosta" : "");
 
   const top = document.createElement("div");
   top.className = "card-top";
@@ -196,7 +205,13 @@ function creaCard(a){
   const actions = document.createElement("div");
   actions.className = "card-actions";
 
-  if (fatto){
+  if (nascosto){
+    const btn = document.createElement("button");
+    btn.className = "btn btn-primary";
+    btn.textContent = "Mostra";
+    btn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {nascosto:false}); refreshAll(); };
+    actions.appendChild(btn);
+  } else if (fatto){
     const orari = (st.inizio && st.fine) ? ` (${st.inizio}–${st.fine})` : "";
     const btn = document.createElement("button");
     btn.className = "btn btn-done";
@@ -222,14 +237,24 @@ function creaCard(a){
     btn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {fatto:true}); refreshAll(); };
     actions.appendChild(btn);
   }
-  const modBtn = document.createElement("button");
-  modBtn.className = "btn btn-ghost";
-  modBtn.textContent = "Modifica";
-  modBtn.onclick = (e) => { e.stopPropagation(); openDetailSheet(a); };
-  actions.appendChild(modBtn);
+  if (!nascosto){
+    const modBtn = document.createElement("button");
+    modBtn.className = "btn btn-ghost";
+    modBtn.textContent = "Modifica";
+    modBtn.onclick = (e) => { e.stopPropagation(); openDetailSheet(a); };
+    actions.appendChild(modBtn);
+
+    if (opts.nascondibile){
+      const hideBtn = document.createElement("button");
+      hideBtn.className = "btn btn-ghost btn-mini";
+      hideBtn.textContent = "Nascondi";
+      hideBtn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {nascosto:true}); refreshAll(); };
+      actions.appendChild(hideBtn);
+    }
+  }
 
   div.appendChild(actions);
-  div.onclick = () => openDetailSheet(a);
+  if (!nascosto) div.onclick = () => openDetailSheet(a);
   return div;
 }
 
@@ -253,6 +278,7 @@ function renderOggi(){
   lista.innerHTML = "";
   const oggi = allActivities()
     .filter(a => a.data === todayISO())
+    .filter(a => !isNascosto(a))
     .filter(classeVisibile)
     .sort((a,b) => (a.ora||"").localeCompare(b.ora||""));
   if (oggi.length === 0){
@@ -280,15 +306,22 @@ function renderCalendario(){
   const meseSel = document.getElementById("filtro-mese").value;
   const statoSel = document.getElementById("filtro-stato").value;
 
+  // Il filtro "Nascoste" e' il ripostiglio: mostra tutto cio' che hai nascosto
+  // (di qualsiasi categoria) per poterlo rimettere in lista.
+  const soloNascoste = (statoSel === "nascoste");
+
   let items = allActivities()
-    .filter(a => a.categoria === "collegio" || a.categoria === "consigli")
+    .filter(a => soloNascoste ? isNascosto(a) : !isNascosto(a))
+    .filter(a => soloNascoste || a.categoria === "collegio" || a.categoria === "consigli")
     .filter(classeVisibile)
     .filter(a => meseSel === "tutti" || meseKey(a.data) === meseSel)
-    .filter(a => statoSel === "tutte" || (statoSel === "fatte") === isFatto(a))
+    .filter(a => soloNascoste || statoSel === "tutte" || (statoSel === "fatte") === isFatto(a))
     .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(a.ora||"")));
 
   if (items.length === 0){
-    lista.innerHTML = `<div class="empty-state">Nessuna attività con questi filtri.</div>`;
+    lista.innerHTML = soloNascoste
+      ? `<div class="empty-state">Nessuna attività nascosta.</div>`
+      : `<div class="empty-state">Nessuna attività con questi filtri.</div>`;
     return;
   }
   let meseCorrente = null;
@@ -301,7 +334,7 @@ function renderCalendario(){
       h.textContent = formatMeseAnno(a.data);
       lista.appendChild(h);
     }
-    lista.appendChild(creaCard(a));
+    lista.appendChild(creaCard(a, {nascondibile:true}));
   }
 }
 
@@ -311,6 +344,7 @@ function renderAltro(){
   lista.innerHTML = "";
   const items = allActivities()
     .filter(a => effectiveCategoria(a) === "altro")
+    .filter(a => !isNascosto(a))
     .filter(classeVisibile)
     .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(a.ora||"")));
   if (items.length === 0){
@@ -327,7 +361,7 @@ function renderAltro(){
       h.textContent = formatMeseAnno(a.data);
       lista.appendChild(h);
     }
-    lista.appendChild(creaCard(a));
+    lista.appendChild(creaCard(a, {nascondibile:true}));
   }
 }
 

@@ -27,21 +27,39 @@
   <section class="counters">
     <div class="counter">
       <div class="counter-label">Collegio</div>
-      <div class="counter-value"><span id="c-collegio-fatte">0</span><span class="counter-target">/<span id="c-collegio-target">40</span> ore</span></div>
+      <div class="counter-split">
+        <div class="cs">
+          <div class="cs-num" id="c-collegio-fatte">0</div>
+          <div class="cs-lab">svolte</div>
+        </div>
+        <div class="cs">
+          <div class="cs-num cs-rest" id="c-collegio-restanti">40</div>
+          <div class="cs-lab" id="lab-collegio-restanti">da svolgere</div>
+        </div>
+      </div>
       <div class="progress">
         <div class="progress-seg progress-blue" id="bar-collegio-blue"></div>
         <div class="progress-seg progress-red" id="bar-collegio-red"></div>
       </div>
-      <div class="counter-sub" id="sub-collegio"></div>
+      <div class="counter-total">su <span id="c-collegio-target">40</span> ore</div>
     </div>
     <div class="counter">
       <div class="counter-label">Consigli</div>
-      <div class="counter-value"><span id="c-consigli-fatte">0</span><span class="counter-target">/<span id="c-consigli-target">40</span> ore</span></div>
+      <div class="counter-split">
+        <div class="cs">
+          <div class="cs-num" id="c-consigli-fatte">0</div>
+          <div class="cs-lab">svolte</div>
+        </div>
+        <div class="cs">
+          <div class="cs-num cs-rest" id="c-consigli-restanti">40</div>
+          <div class="cs-lab" id="lab-consigli-restanti">da svolgere</div>
+        </div>
+      </div>
       <div class="progress">
         <div class="progress-seg progress-blue" id="bar-consigli-blue"></div>
         <div class="progress-seg progress-red" id="bar-consigli-red"></div>
       </div>
-      <div class="counter-sub" id="sub-consigli"></div>
+      <div class="counter-total">su <span id="c-consigli-target">40</span> ore</div>
     </div>
   </section>
 
@@ -61,6 +79,7 @@
       <option value="tutte">Tutte</option>
       <option value="da-fare">Da fare</option>
       <option value="fatte">Fatte</option>
+      <option value="nascoste">Nascoste</option>
     </select>
   </div>
   <div id="calendario-lista" class="lista"></div>
