@@ -86,6 +86,10 @@ function allActivities(){
   const fromPiano = (PIANO && PIANO.attivita) ? PIANO.attivita : [];
   return fromPiano.concat(EXTRA);
 }
+function effectiveTitolo(a){
+  const st = getStato(a.id);
+  return (st.titolo && st.titolo.trim()) ? st.titolo : a.titolo;
+}
 function effectiveCategoria(a){
   const st = getStato(a.id);
   return st.categoria || a.categoria;
@@ -180,7 +184,7 @@ function creaCard(a, opts){
   const left = document.createElement("div");
   const title = document.createElement("div");
   title.className = "card-title";
-  title.textContent = a.titolo + (a.classe ? ` · ${a.classe}` : "");
+  title.textContent = effectiveTitolo(a) + (a.classe ? ` · ${a.classe}` : "");
   const meta = document.createElement("div");
   meta.className = "card-meta";
   const bits = [formatDataLunga(a.data)];
@@ -441,7 +445,7 @@ function sezioneProspetto(titolo, cat, target){
         const [ini, fin] = orariRiga(a);
         return `<tr>` +
           `<td>${dataBreve(a.data)}</td>` +
-          `<td>${escapeHtml(a.titolo)}${a.classe ? " \u00b7 " + escapeHtml(a.classe) : ""}</td>` +
+          `<td>${escapeHtml(effectiveTitolo(a))}${a.classe ? " \u00b7 " + escapeHtml(a.classe) : ""}</td>` +
           `<td class="pr-c">${ini}</td>` +
           `<td class="pr-c">${fin}</td>` +
           `<td class="pr-n">${fmtOre(effectiveOre(a) || 0)}</td>` +
@@ -499,8 +503,10 @@ function openDetailSheet(a){
   const ore = effectiveOre(a);
   const fatto = isFatto(a);
   const html = `
-    <h2>${a.titolo}${a.classe ? " · " + a.classe : ""}</h2>
-    <div class="hint">${formatDataLunga(a.data)}${a.ora ? " · " + a.ora : ""}${a.sede ? " · " + a.sede : ""}</div>
+    <h2>Modifica</h2>
+    <div class="hint">${formatDataLunga(a.data)}${a.ora ? " · " + a.ora : ""}${a.sede ? " · " + a.sede : ""}${a.classe ? " · " + escapeHtml(a.classe) : ""}</div>
+    <label>Titolo</label>
+    <input type="text" id="d-titolo" value="${escapeHtml(effectiveTitolo(a))}">
     <label>Categoria</label>
     <select id="d-categoria">
       <option value="collegio" ${cat==="collegio"?"selected":""}>Collegio (40h)</option>
@@ -532,6 +538,7 @@ function openDetailSheet(a){
   document.getElementById("d-fine").addEventListener("change", ricalcola);
 
   document.getElementById("d-salva").onclick = () => {
+    const nuovoTitolo = document.getElementById("d-titolo").value.trim() || a.titolo;
     const nuovaCat = document.getElementById("d-categoria").value;
     const nuoveOre = parseFloat(document.getElementById("d-ore").value) || 0;
     const nuovoFatto = document.getElementById("d-fatto").checked;
@@ -539,10 +546,13 @@ function openDetailSheet(a){
     const nuovaFine = document.getElementById("d-fine").value || undefined;
     if (a.extra){
       const idx = EXTRA.findIndex(x => x.id === a.id);
-      if (idx >= 0){ EXTRA[idx].categoria = nuovaCat; EXTRA[idx].ore = nuoveOre; save(LS_EXTRA, EXTRA); }
+      if (idx >= 0){ EXTRA[idx].titolo = nuovoTitolo; EXTRA[idx].categoria = nuovaCat; EXTRA[idx].ore = nuoveOre; save(LS_EXTRA, EXTRA); }
       setStato(a.id, {fatto:nuovoFatto, inizio:nuovoInizio, fine:nuovaFine});
     } else {
       setStato(a.id, {
+        // undefined = "come da Piano Annuale": cosi' un titolo riportato
+        // all'originale non resta salvato come personalizzazione.
+        titolo: nuovoTitolo === a.titolo ? undefined : nuovoTitolo,
         categoria: nuovaCat === a.categoria ? undefined : nuovaCat,
         ore: nuoveOre === a.ore ? undefined : nuoveOre,
         fatto: nuovoFatto,

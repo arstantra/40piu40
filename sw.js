@@ -1,6 +1,6 @@
 // Service worker: cache dell'app shell per l'uso offline.
 // Per pubblicare un aggiornamento dell'app, cambia CACHE_NAME.
-const CACHE_NAME = "40piu40-v4";
+const CACHE_NAME = "40piu40-v5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
