@@ -596,6 +596,11 @@ function openAddSheet(){
       <label>Alunni certificati</label>
       <input type="number" id="a-alunni" min="1" step="1" value="1">
     </div>
+    <label>Ora inizio / ora fine (facoltativo)</label>
+    <div style="display:flex;gap:10px;">
+      <input type="time" id="a-inizio" style="flex:1;">
+      <input type="time" id="a-fine" style="flex:1;">
+    </div>
     <label>Ore</label>
     <input type="number" id="a-ore" min="0" step="0.25" value="1">
     <label>Classe (facoltativo)</label>
@@ -606,6 +611,16 @@ function openAddSheet(){
     </div>
   `;
   showSheet(html);
+
+  // Se si mettono inizio e fine, le ore si calcolano da sole (come in Modifica).
+  const ricalcolaNuova = () => {
+    const i = document.getElementById("a-inizio").value;
+    const f = document.getElementById("a-fine").value;
+    const calcolate = oreDaOrari(i, f);
+    if (calcolate != null) document.getElementById("a-ore").value = calcolate;
+  };
+  document.getElementById("a-inizio").addEventListener("change", ricalcolaNuova);
+  document.getElementById("a-fine").addEventListener("change", ricalcolaNuova);
 
   document.getElementById("tpl-generica").onclick = () => {
     document.getElementById("a-titolo").value = "Attività";
@@ -619,6 +634,8 @@ function openAddSheet(){
     aggiornaOreGlo();
   };
   document.getElementById("a-salva").onclick = () => {
+    const inizio = document.getElementById("a-inizio").value || undefined;
+    const fine = document.getElementById("a-fine").value || undefined;
     const nuovo = {
       id: "extra-" + Date.now(),
       data: document.getElementById("a-data").value || todayISO(),
@@ -626,11 +643,12 @@ function openAddSheet(){
       categoria: document.getElementById("a-categoria").value,
       ore: parseFloat(document.getElementById("a-ore").value) || 0,
       classe: document.getElementById("a-classe").value.trim() || undefined,
+      ora: inizio,
       extra: true
     };
     EXTRA.push(nuovo);
     save(LS_EXTRA, EXTRA);
-    setStato(nuovo.id, {fatto: document.getElementById("a-fatto").checked});
+    setStato(nuovo.id, {fatto: document.getElementById("a-fatto").checked, inizio, fine});
     closeSheet();
     mostraNuova(nuovo);
   };
