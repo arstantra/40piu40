@@ -139,6 +139,21 @@
   </section>
 
   <section class="settings-block">
+    <h2>Calendario del telefono</h2>
+    <p class="hint">Scarica gli impegni da oggi in avanti in un file .ics e aprilo con il calendario del telefono: ogni appuntamento arriva con il suo promemoria. Se salti una riunione, cancellala dal calendario.</p>
+    <label class="field">Promemoria
+      <select id="input-promemoria">
+        <option value="60">1 ora prima</option>
+        <option value="15">15 minuti prima</option>
+        <option value="1440">Il giorno prima</option>
+        <option value="0">Nessuno</option>
+      </select>
+    </label>
+    <button class="btn-secondary" id="btn-ics">Scarica calendario (.ics)</button>
+    <button class="btn-secondary hidden" id="btn-ics-share">Invia il file</button>
+  </section>
+
+  <section class="settings-block">
     <h2>Zona pericolosa</h2>
     <p class="hint">Utile dopo aver fatto delle prove: cancella tutte le presenze e le attività aggiunte, il calendario del Piano Annuale resta. Non si può annullare — esporta prima un backup se vuoi conservare qualcosa.</p>
     <button class="btn-secondary btn-danger" id="btn-reset">Azzera tutti i dati</button>

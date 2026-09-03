@@ -10,7 +10,7 @@ const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mie
 let PIANO = null;      // contenuto data/piano.json
 let STATO = {};
 let EXTRA = [];
-let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [], nome: "" };
+let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [], nome: "", promemoria: 60 };
 let currentMainView = "oggi";
 
 /* ---------------------------------------------------------- utilità date */
@@ -71,7 +71,7 @@ function save(key, val){
 function loadState(){
   STATO = load(LS_STATO, {});
   EXTRA = load(LS_EXTRA, []);
-  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[], nome:""}, load(LS_SETTINGS, {}));
+  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[], nome:"", promemoria:60}, load(LS_SETTINGS, {}));
 }
 function getStato(id){
   return STATO[id] || {};
@@ -380,6 +380,7 @@ function renderImpostazioni(){
   document.getElementById("input-target-consigli").value = SETTINGS.targetConsigli;
   document.getElementById("input-mie-classi").value = (SETTINGS.mieClassi || []).join(", ");
   document.getElementById("input-nome").value = SETTINGS.nome || "";
+  document.getElementById("input-promemoria").value = String(SETTINGS.promemoria ?? 60);
   if (PIANO){
     document.getElementById("info-piano").textContent =
       `${PIANO.istituto || ""} — a.s. ${PIANO.anno_scolastico || ""}. Fonte: ${PIANO.fonte || ""}.`;
@@ -391,6 +392,7 @@ function salvaImpostazioni(){
   SETTINGS.mieClassi = document.getElementById("input-mie-classi").value
     .split(",").map(s => s.trim()).filter(Boolean);
   SETTINGS.nome = document.getElementById("input-nome").value.trim();
+  SETTINGS.promemoria = parseInt(document.getElementById("input-promemoria").value, 10) || 0;
   save(LS_SETTINGS, SETTINGS);
   refreshAll();
 }
@@ -712,6 +714,110 @@ function refreshAll(){
   renderAltro();
 }
 
+/* ---------------------------------------------------------- Calendario .ics
+   Esporta gli impegni futuri in un file standard iCalendar: si apre con il
+   calendario del telefono, che poi gestisce lui i promemoria. Nessun server,
+   nessuna push: e' il calendario di Android a suonare. */
+function icsEsc(s){
+  return String(s == null ? "" : s)
+    .replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+// Le righe .ics non devono superare i 75 ottetti: si spezzano con uno spazio.
+function icsFold(riga){
+  if (riga.length <= 74) return riga;
+  let out = riga.slice(0, 74), resto = riga.slice(74);
+  while (resto.length > 73){ out += "\r\n " + resto.slice(0, 73); resto = resto.slice(73); }
+  return out + "\r\n " + resto;
+}
+function icsStampUTC(d){
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth()+1)}${pad2(d.getUTCDate())}T` +
+         `${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
+}
+// Ora "fluttuante" (senza fuso): il calendario la legge come ora locale.
+function icsOra(dataISO, minuti){
+  const d = parseISO(dataISO);
+  d.setMinutes(d.getMinutes() + minuti);
+  return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}T` +
+         `${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+}
+function icsGiorno(dataISO, piuGiorni){
+  const d = parseISO(dataISO);
+  d.setDate(d.getDate() + (piuGiorni || 0));
+  return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}`;
+}
+// Da esportare: quello che vedi in app, da oggi in avanti. Le nascoste no.
+function attivitaDaEsportare(){
+  const oggi = todayISO();
+  return allActivities()
+    .filter(a => !isNascosto(a))
+    .filter(classeVisibile)
+    .filter(a => a.data >= oggi)
+    .sort((a,b) => (a.data + (a.ora||"")).localeCompare(b.data + (b.ora||"")));
+}
+function generaICS(){
+  const promemoria = parseInt(SETTINGS.promemoria, 10) || 0;
+  const stamp = icsStampUTC(new Date());
+  const righe = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//40piu40//Impegni//IT",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:Impegni ${(PIANO && PIANO.anno_scolastico) || ""}`.trim()
+  ];
+  for (const a of attivitaDaEsportare()){
+    const ore = effectiveOre(a) || 1;
+    const inizio = getStato(a.id).inizio || a.ora;
+    const titolo = effectiveTitolo(a) + (a.classe ? ` ${a.classe}` : "");
+    righe.push("BEGIN:VEVENT");
+    righe.push(`UID:40piu40-${a.id}@arstantra.github.io`);
+    righe.push(`DTSTAMP:${stamp}`);
+    if (inizio != null && orarioInMinuti(inizio) != null){
+      const m = orarioInMinuti(inizio);
+      righe.push(`DTSTART:${icsOra(a.data, m)}`);
+      righe.push(`DTEND:${icsOra(a.data, m + Math.round(ore * 60))}`);
+    } else {
+      righe.push(`DTSTART;VALUE=DATE:${icsGiorno(a.data, 0)}`);
+      righe.push(`DTEND;VALUE=DATE:${icsGiorno(a.data, 1)}`);
+    }
+    righe.push(`SUMMARY:${icsEsc(titolo)}`);
+    if (a.sede) righe.push(`LOCATION:${icsEsc(a.sede)}`);
+    righe.push(`DESCRIPTION:${icsEsc(`${tagLabel(effectiveCategoria(a))} · ${fmtOre(ore)} ore`)}`);
+    if (promemoria > 0){
+      righe.push("BEGIN:VALARM", "ACTION:DISPLAY",
+                 `TRIGGER:-PT${promemoria}M`,
+                 `DESCRIPTION:${icsEsc(titolo)}`, "END:VALARM");
+    }
+    righe.push("END:VEVENT");
+  }
+  righe.push("END:VCALENDAR");
+  return righe.map(icsFold).join("\r\n") + "\r\n";
+}
+function fileICS(){
+  return new File([generaICS()], `impegni-40piu40-${todayISO()}.ics`, {type:"text/calendar"});
+}
+function scaricaICS(){
+  const n = attivitaDaEsportare().length;
+  if (!n){ alert("Non ci sono impegni da oggi in avanti."); return; }
+  const f = fileICS();
+  const url = URL.createObjectURL(f);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = f.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert(`${n} impegni nel file. Aprilo dalle notifiche o dalla cartella Download per aggiungerli al calendario.`);
+}
+async function condividiICS(){
+  const n = attivitaDaEsportare().length;
+  if (!n){ alert("Non ci sono impegni da oggi in avanti."); return; }
+  try{ await navigator.share({ files:[fileICS()], title:"Impegni 40+40" }); }
+  catch(e){ /* condivisione annullata */ }
+}
+
 /* ---------------------------------------------------------- Backup */
 function esportaBackup(){
   const payload = { stato: STATO, extra: EXTRA, settings: SETTINGS, esportato: new Date().toISOString() };
@@ -789,6 +895,21 @@ async function init(){
   document.getElementById("input-target-consigli").addEventListener("change", salvaImpostazioni);
   document.getElementById("input-mie-classi").addEventListener("change", salvaImpostazioni);
   document.getElementById("input-nome").addEventListener("change", salvaImpostazioni);
+  document.getElementById("input-promemoria").addEventListener("change", salvaImpostazioni);
+
+  document.getElementById("btn-ics").addEventListener("click", () => {
+    salvaImpostazioni();
+    scaricaICS();
+  });
+  // "Invia il file" solo dove il telefono sa condividere allegati.
+  try{
+    const provaFile = new File([""], "x.ics", {type:"text/calendar"});
+    if (navigator.canShare && navigator.canShare({files:[provaFile]})){
+      const btnShare = document.getElementById("btn-ics-share");
+      btnShare.classList.remove("hidden");
+      btnShare.addEventListener("click", () => { salvaImpostazioni(); condividiICS(); });
+    }
+  }catch(e){ /* niente condivisione: resta solo il download */ }
 
   document.getElementById("btn-prospetto").addEventListener("click", () => {
     salvaImpostazioni();

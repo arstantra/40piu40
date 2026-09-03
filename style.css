@@ -258,6 +258,14 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
   margin-bottom:10px;
   gap:12px;
 }
+.field select{
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:#fff;
+  font-size:14.5px;
+  color:var(--text);
+}
 .field input[type=number]{
   width:80px;
   padding:8px 10px;
