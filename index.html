@@ -93,6 +93,18 @@
   <div id="altro-lista" class="lista"></div>
 </main>
 
+<main id="view-prospetto" class="view hidden">
+  <div class="view-header no-print">
+    <button class="back-btn" id="prospetto-back">‹</button>
+    <h1>Prospetto ore</h1>
+  </div>
+  <div class="prospetto-actions no-print">
+    <button class="btn-secondary" id="btn-print">Stampa o salva PDF</button>
+  </div>
+  <p class="hint no-print">Se dal telefono il pulsante non apre la stampa, usa Condividi → Stampa del browser.</p>
+  <div id="prospetto-doc" class="prospetto"></div>
+</main>
+
 <main id="view-impostazioni" class="view hidden">
   <div class="view-header">
     <button class="back-btn" data-back>‹</button>
@@ -117,6 +129,13 @@
     <button class="btn-secondary" id="btn-export">Esporta backup</button>
     <button class="btn-secondary" id="btn-import">Importa backup</button>
     <input type="file" id="input-import" accept="application/json" class="hidden">
+  </section>
+
+  <section class="settings-block">
+    <h2>Prospetto ore</h2>
+    <p class="hint">Il foglio delle ore svolte, con orari, totali e sforamenti. Da stampare o salvare in PDF.</p>
+    <input type="text" id="input-nome" placeholder="Nome e cognome (facoltativo)">
+    <button class="btn-secondary" id="btn-prospetto">Apri prospetto</button>
   </section>
 
   <section class="settings-block">

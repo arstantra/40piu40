@@ -135,6 +135,7 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .tag-consigli{background:#e6f4ea;color:var(--green);}
 .tag-altro{background:#f1f3f4;color:var(--text-light);}
 .card-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;align-items:center;}
+.card.evidenzia{border-color:var(--blu,#1a73e8);box-shadow:0 0 0 2px rgba(26,115,232,.18);}
 .card.nascosta{opacity:.5;}
 .card.nascosta .card-title{font-weight:400;}
 
@@ -265,12 +266,56 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
   font-size:14.5px;
   text-align:center;
 }
-#input-mie-classi{
+#input-mie-classi,#input-nome{
   width:100%;
   padding:10px 12px;
   border:1px solid var(--border);
   border-radius:10px;
   font-size:14.5px;
+}
+
+/* ---------- Prospetto ore ---------- */
+.prospetto-actions{margin-bottom:12px;}
+.prospetto{font-size:14px;}
+.pr-title{font-size:17px;font-weight:600;}
+.pr-sub{font-size:12.5px;color:var(--text-light);margin-top:3px;}
+.pr-sintesi{margin:18px 0 4px;}
+.pr-riga{
+  display:flex;align-items:baseline;gap:10px;
+  padding:8px 0;border-bottom:1px solid var(--border);
+}
+.pr-lab{flex:1;}
+.pr-val{font-weight:600;font-variant-numeric:tabular-nums;}
+.pr-dx{width:120px;text-align:right;font-size:12.5px;color:var(--text-light);}
+.pr-over{color:var(--red);}
+.pr-h2{
+  font-size:13px;font-weight:600;color:var(--text-light);
+  text-transform:uppercase;letter-spacing:.05em;margin:26px 0 8px;
+}
+.pr-tab{width:100%;border-collapse:collapse;font-size:13px;}
+.pr-tab th{
+  text-align:left;font-weight:500;font-size:11px;color:var(--text-light);
+  text-transform:uppercase;letter-spacing:.04em;
+  padding:6px 4px;border-bottom:1px solid var(--border);
+}
+.pr-tab td{padding:7px 4px;border-bottom:1px solid var(--border);vertical-align:top;}
+.pr-tab td:first-child{white-space:nowrap;}
+.pr-c{text-align:center;white-space:nowrap;}
+.pr-n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.pr-tot td{font-weight:600;}
+.pr-tot2 td{color:var(--text-light);border-bottom:none;}
+.pr-vuoto{color:var(--text-light);}
+
+@media print{
+  .topbar,.tabbar,.fab,.no-print{display:none !important;}
+  body{background:#fff !important;}
+  .view{padding:0 !important;max-width:none !important;border:none !important;background:#fff !important;}
+  .prospetto,.prospetto *{color:#000 !important;background:#fff !important;}
+  .pr-over{font-weight:700;}
+  .pr-tab{font-size:10.5pt;}
+  .pr-tab tr{page-break-inside:avoid;}
+  .pr-h2{page-break-after:avoid;}
+  @page{margin:15mm;}
 }
 
 /* ---------- Bottom sheet ---------- */

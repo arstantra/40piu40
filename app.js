@@ -5,12 +5,12 @@
 
 const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?, nascosto?} }
 const LS_EXTRA = "40piu40_extra";      // [ {id, data, titolo, categoria, ore, classe?, sede?, extra:true} ]
-const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[] }
+const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[], nome }
 
 let PIANO = null;      // contenuto data/piano.json
 let STATO = {};
 let EXTRA = [];
-let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [] };
+let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [], nome: "" };
 let currentMainView = "oggi";
 
 /* ---------------------------------------------------------- utilità date */
@@ -71,7 +71,7 @@ function save(key, val){
 function loadState(){
   STATO = load(LS_STATO, {});
   EXTRA = load(LS_EXTRA, []);
-  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[]}, load(LS_SETTINGS, {}));
+  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[], nome:""}, load(LS_SETTINGS, {}));
 }
 function getStato(id){
   return STATO[id] || {};
@@ -107,6 +107,7 @@ function isNascosto(a){
   return !!getStato(a.id).nascosto;
 }
 function classeVisibile(a){
+  if (a.extra) return true; // le attivita' aggiunte a mano sono sempre visibili
   if (!a.classe) return true;
   if (!SETTINGS.mieClassi || SETTINGS.mieClassi.length === 0) return true;
   return SETTINGS.mieClassi.some(c => c.toLowerCase() === a.classe.toLowerCase());
@@ -171,6 +172,7 @@ function creaCard(a, opts){
   const inCorso = isInCorso(a);
   const st = getStato(a.id);
   div.className = "card" + (fatto ? " done" : "") + (nascosto ? " nascosta" : "");
+  div.dataset.id = a.id;
 
   const top = document.createElement("div");
   top.className = "card-top";
@@ -294,11 +296,14 @@ function renderOggi(){
 /* ---------------------------------------------------------- render: Calendario */
 function popolaFiltroMesi(){
   const sel = document.getElementById("filtro-mese");
+  const precedente = sel.value;
   const mesi = [...new Set(allActivities()
-    .filter(a => a.categoria === "collegio" || a.categoria === "consigli")
+    .filter(a => effectiveCategoria(a) === "collegio" || effectiveCategoria(a) === "consigli")
     .map(a => meseKey(a.data)))].sort();
   sel.innerHTML = `<option value="tutti">Tutti i mesi</option>` +
     mesi.map(m => `<option value="${m}">${formatMeseAnno(m+"-01")}</option>`).join("");
+  // Mantiene il mese scelto dall'utente, se esiste ancora.
+  sel.value = mesi.includes(precedente) ? precedente : "tutti";
 }
 function renderCalendario(){
   const lista = document.getElementById("calendario-lista");
@@ -312,11 +317,11 @@ function renderCalendario(){
 
   let items = allActivities()
     .filter(a => soloNascoste ? isNascosto(a) : !isNascosto(a))
-    .filter(a => soloNascoste || a.categoria === "collegio" || a.categoria === "consigli")
+    .filter(a => soloNascoste || effectiveCategoria(a) === "collegio" || effectiveCategoria(a) === "consigli")
     .filter(classeVisibile)
     .filter(a => meseSel === "tutti" || meseKey(a.data) === meseSel)
     .filter(a => soloNascoste || statoSel === "tutte" || (statoSel === "fatte") === isFatto(a))
-    .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(a.ora||"")));
+    .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(b.ora||"")));
 
   if (items.length === 0){
     lista.innerHTML = soloNascoste
@@ -346,7 +351,7 @@ function renderAltro(){
     .filter(a => effectiveCategoria(a) === "altro")
     .filter(a => !isNascosto(a))
     .filter(classeVisibile)
-    .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(a.ora||"")));
+    .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(b.ora||"")));
   if (items.length === 0){
     lista.innerHTML = `<div class="empty-state">Nessuna attività qui.</div>`;
     return;
@@ -370,6 +375,7 @@ function renderImpostazioni(){
   document.getElementById("input-target-collegio").value = SETTINGS.targetCollegio;
   document.getElementById("input-target-consigli").value = SETTINGS.targetConsigli;
   document.getElementById("input-mie-classi").value = (SETTINGS.mieClassi || []).join(", ");
+  document.getElementById("input-nome").value = SETTINGS.nome || "";
   if (PIANO){
     document.getElementById("info-piano").textContent =
       `${PIANO.istituto || ""} — a.s. ${PIANO.anno_scolastico || ""}. Fonte: ${PIANO.fonte || ""}.`;
@@ -380,8 +386,110 @@ function salvaImpostazioni(){
   SETTINGS.targetConsigli = parseFloat(document.getElementById("input-target-consigli").value) || 0;
   SETTINGS.mieClassi = document.getElementById("input-mie-classi").value
     .split(",").map(s => s.trim()).filter(Boolean);
+  SETTINGS.nome = document.getElementById("input-nome").value.trim();
   save(LS_SETTINGS, SETTINGS);
   refreshAll();
+}
+
+/* ---------------------------------------------------------- Prospetto ore */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c]);
+}
+function dataBreve(s){
+  const d = parseISO(s);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+function dataEstesa(s){
+  return parseISO(s).toLocaleDateString("it-IT", { day:"numeric", month:"long", year:"numeric" });
+}
+// Orari da mettere in prospetto: quelli registrati col timer se ci sono,
+// altrimenti quelli previsti dal Piano (inizio + durata).
+function orariRiga(a){
+  const st = getStato(a.id);
+  if (st.inizio && st.fine) return [st.inizio, st.fine];
+  const base = st.inizio || a.ora;
+  const inizio = orarioInMinuti(base);
+  if (inizio == null) return ["\u2014", "\u2014"];
+  const fine = Math.round(inizio + (effectiveOre(a) || 0) * 60) % (24*60);
+  return [base, `${pad2(Math.floor(fine/60))}:${pad2(fine%60)}`];
+}
+function righeSvolte(cat){
+  return allActivities()
+    .filter(a => !isNascosto(a))
+    .filter(isFatto)
+    .filter(a => effectiveCategoria(a) === cat)
+    .sort((a,b) => (a.data + (a.ora||"")).localeCompare(b.data + (b.ora||"")));
+}
+function rigaSintesi(label, fatte, target){
+  let valore, nota, cls = "pr-dx";
+  if (target == null){
+    valore = `${fmtOre(fatte)} ore`;
+    nota = "fuori dai tetti";
+  } else {
+    valore = `${fmtOre(fatte)} / ${fmtOre(target)} ore`;
+    if (fatte > target){ nota = `oltre di ${fmtOre(fatte - target)}`; cls += " pr-over"; }
+    else nota = `restano ${fmtOre(target - fatte)}`;
+  }
+  return `<div class="pr-riga"><span class="pr-lab">${label}</span>` +
+         `<span class="pr-val">${valore}</span><span class="${cls}">${nota}</span></div>`;
+}
+function sezioneProspetto(titolo, cat, target){
+  const righe = righeSvolte(cat);
+  const totale = righe.reduce((s,a) => s + (effectiveOre(a) || 0), 0);
+  const corpo = righe.length
+    ? righe.map(a => {
+        const [ini, fin] = orariRiga(a);
+        return `<tr>` +
+          `<td>${dataBreve(a.data)}</td>` +
+          `<td>${escapeHtml(a.titolo)}${a.classe ? " \u00b7 " + escapeHtml(a.classe) : ""}</td>` +
+          `<td class="pr-c">${ini}</td>` +
+          `<td class="pr-c">${fin}</td>` +
+          `<td class="pr-n">${fmtOre(effectiveOre(a) || 0)}</td>` +
+        `</tr>`;
+      }).join("")
+    : `<tr><td colspan="5" class="pr-vuoto">Nessuna ora registrata.</td></tr>`;
+
+  let piede = `<tr class="pr-tot"><td colspan="4">Totale ore svolte</td>` +
+              `<td class="pr-n">${fmtOre(totale)}</td></tr>`;
+  if (target != null){
+    const oltre = Math.max(0, totale - target);
+    piede += oltre > 0
+      ? `<tr class="pr-tot2"><td colspan="4">Oltre il tetto di ${fmtOre(target)} ore</td>` +
+        `<td class="pr-n pr-over">+${fmtOre(oltre)}</td></tr>`
+      : `<tr class="pr-tot2"><td colspan="4">Ancora da svolgere sul tetto di ${fmtOre(target)} ore</td>` +
+        `<td class="pr-n">${fmtOre(target - totale)}</td></tr>`;
+  }
+  return `<h2 class="pr-h2">${titolo}</h2>` +
+    `<table class="pr-tab">` +
+    `<thead><tr><th>Data</th><th>Attivit\u00e0</th><th>Inizio</th><th>Fine</th><th>Ore</th></tr></thead>` +
+    `<tbody>${corpo}${piede}</tbody></table>`;
+}
+function renderProspetto(){
+  const tot = computeTotals();
+  const intestazione = [];
+  if (SETTINGS.nome) intestazione.push(escapeHtml(SETTINGS.nome));
+  if (PIANO && PIANO.istituto) intestazione.push(escapeHtml(PIANO.istituto));
+  if (PIANO && PIANO.anno_scolastico) intestazione.push("a.s. " + escapeHtml(PIANO.anno_scolastico));
+
+  document.getElementById("prospetto-doc").innerHTML = `
+    <div class="pr-head">
+      <div class="pr-title">Ore attivit\u00e0 funzionali svolte</div>
+      <div class="pr-sub">${intestazione.join(" \u00b7 ")}</div>
+      <div class="pr-sub">Aggiornato al ${dataEstesa(todayISO())}</div>
+    </div>
+    <div class="pr-sintesi">
+      ${rigaSintesi("Collegio", tot.collegio, SETTINGS.targetCollegio)}
+      ${rigaSintesi("Consigli", tot.consigli, SETTINGS.targetConsigli)}
+      ${rigaSintesi("Fuori tetto", tot.altro, null)}
+    </div>
+    ${sezioneProspetto("Collegio", "collegio", SETTINGS.targetCollegio)}
+    ${sezioneProspetto("Consigli", "consigli", SETTINGS.targetConsigli)}
+    ${sezioneProspetto("Fuori tetto 40+40", "altro", null)}
+  `;
+}
+function apriProspetto(){
+  renderProspetto();
+  showView("prospetto");
 }
 
 /* ---------------------------------------------------------- Bottom sheet: dettaglio */
@@ -514,8 +622,28 @@ function openAddSheet(){
     save(LS_EXTRA, EXTRA);
     setStato(nuovo.id, {fatto: document.getElementById("a-fatto").checked});
     closeSheet();
-    refreshAll();
+    mostraNuova(nuovo);
   };
+}
+// Dopo un inserimento: i filtri del calendario potrebbero nascondere l'attivita'
+// appena creata (es. filtro "Da fare" con attivita' gia' svolta). Li azzeriamo,
+// apriamo la schermata giusta e la evidenziamo, cosi' si vede subito dov'e'.
+function mostraNuova(nuovo){
+  document.getElementById("filtro-mese").value = "tutti";
+  document.getElementById("filtro-stato").value = "tutte";
+  refreshAll();
+  let vista = "calendario", contenitore = "calendario-lista";
+  if (nuovo.data === todayISO()){ vista = "oggi"; contenitore = "oggi-lista"; }
+  else if (nuovo.categoria === "altro"){ vista = "altro"; contenitore = "altro-lista"; }
+  showView(vista);
+  evidenzia(contenitore, nuovo.id);
+}
+function evidenzia(contenitoreId, id){
+  const el = document.getElementById(contenitoreId).querySelector(`.card[data-id="${id}"]`);
+  if (!el) return;
+  el.classList.add("evidenzia");
+  el.scrollIntoView({block:"center", behavior:"smooth"});
+  setTimeout(() => el.classList.remove("evidenzia"), 2600);
 }
 function aggiornaOreGlo(){
   const box = document.getElementById("a-glo-box");
@@ -542,7 +670,7 @@ function showView(name){
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
   document.getElementById("view-" + name).classList.remove("hidden");
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
-  const isSecondary = (name === "impostazioni");
+  const isSecondary = (name === "impostazioni" || name === "prospetto");
   document.getElementById("tabbar").classList.toggle("hidden", isSecondary);
   document.getElementById("btn-add").classList.toggle("hidden", isSecondary);
   if (!isSecondary) currentMainView = name;
@@ -632,6 +760,17 @@ async function init(){
   document.getElementById("input-target-collegio").addEventListener("change", salvaImpostazioni);
   document.getElementById("input-target-consigli").addEventListener("change", salvaImpostazioni);
   document.getElementById("input-mie-classi").addEventListener("change", salvaImpostazioni);
+  document.getElementById("input-nome").addEventListener("change", salvaImpostazioni);
+
+  document.getElementById("btn-prospetto").addEventListener("click", () => {
+    salvaImpostazioni();
+    apriProspetto();
+  });
+  document.getElementById("prospetto-back").addEventListener("click", () => {
+    renderImpostazioni();
+    showView("impostazioni");
+  });
+  document.getElementById("btn-print").addEventListener("click", () => window.print());
 
   document.getElementById("btn-export").addEventListener("click", esportaBackup);
   document.getElementById("btn-import").addEventListener("click", () => document.getElementById("input-import").click());
