@@ -3,7 +3,7 @@
    sul telefono; il file data/piano.json contiene il calendario precaricato
    dal Piano Annuale della scuola. */
 
-const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?, nascosto?} }
+const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?, nascosto?, giustificato?} }
 const LS_EXTRA = "40piu40_extra";      // [ {id, data, titolo, categoria, ore, classe?, sede?, extra:true} ]
 const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[], nome }
 
@@ -38,6 +38,9 @@ function meseKey(s){ return s.slice(0,7); } // YYYY-MM
 function fmtOre(n){
   n = Math.round(n*100)/100;
   return (n % 1 === 0) ? String(n) : String(n).replace(".", ",");
+}
+function etichettaGiust(n){
+  return `${fmtOre(n)} giustificat${n === 1 ? "a" : "e"}`;
 }
 function oraOra(){
   const d = new Date();
@@ -110,6 +113,12 @@ function isInCorso(a){
 function isNascosto(a){
   return !!getStato(a.id).nascosto;
 }
+// Assenza giustificata: la riunione c'era, io no. Le ore non sono svolte, ma
+// restano recintate dentro il tetto e nessuno me le puo' piu' chiedere.
+// Vale solo per collegio e consigli: "altro" e' fuori tetto, non ha un tetto.
+function isGiustificato(a){
+  return !!getStato(a.id).giustificato;
+}
 function classeVisibile(a){
   if (a.extra) return true; // le attivita' aggiunte a mano sono sempre visibili
   if (!a.classe) return true;
@@ -118,12 +127,19 @@ function classeVisibile(a){
 }
 
 function computeTotals(){
-  const tot = { collegio:0, consigli:0, altro:0 };
+  const tot = { collegio:0, consigli:0, altro:0, giustificate:{ collegio:0, consigli:0 } };
   for (const a of allActivities()){
+    // Una voce nascosta non scala niente: "nascosto" prevale su tutto.
     if (isNascosto(a)) continue;
-    if (!isFatto(a)) continue;
     const cat = effectiveCategoria(a);
     const ore = effectiveOre(a) || 0;
+    // Le assenze si contano a parte e non arrivano mai alle ore svolte.
+    // Le ore sono sempre quelle previste dal calendario: non c'e' stato timer.
+    if (isGiustificato(a) && tot.giustificate[cat] != null){
+      tot.giustificate[cat] += ore;
+      continue;
+    }
+    if (!isFatto(a)) continue;
     if (tot[cat] != null) tot[cat] += ore; else tot.altro += ore;
   }
   return tot;
@@ -132,16 +148,26 @@ function computeTotals(){
 /* ---------------------------------------------------------- render: contatori */
 function renderContatori(){
   const tot = computeTotals();
-  fillCounter("collegio", tot.collegio, SETTINGS.targetCollegio);
-  fillCounter("consigli", tot.consigli, SETTINGS.targetConsigli);
+  fillCounter("collegio", tot.collegio, SETTINGS.targetCollegio, tot.giustificate.collegio);
+  fillCounter("consigli", tot.consigli, SETTINGS.targetConsigli, tot.giustificate.consigli);
 }
-function fillCounter(cat, fatte, target){
-  const oltre = Math.max(0, fatte - target);
+function fillCounter(cat, fatte, target, giust){
+  giust = giust || 0;
+  // Il tetto resta 40: sono le ore ancora disponibili a scendere. L'app mostra
+  // tutti e due i numeri e lascia l'interpretazione a chi legge.
+  const disponibile = Math.max(0, target - giust);
+  const entro = Math.min(fatte, disponibile);
+  const oltre = Math.max(0, fatte - disponibile);
+  const residuo = Math.max(0, disponibile - fatte);
+  const scala = Math.max(target, fatte + giust, 1);
+
   document.getElementById(`c-${cat}-fatte`).textContent = fmtOre(fatte);
   document.getElementById(`c-${cat}-target`).textContent = fmtOre(target);
+  const nota = document.getElementById(`c-${cat}-giust`);
+  nota.textContent = giust > 0 ? ` · ${etichettaGiust(giust)}` : "";
 
-  // Seconda colonna: quante ore restano da svolgere; se il tetto e' superato,
-  // mostra invece di quanto si e' andati oltre.
+  // Seconda colonna: quante ore restano da svolgere (sul monte disponibile);
+  // se il tetto e' superato, mostra invece di quanto si e' andati oltre.
   const rest = document.getElementById(`c-${cat}-restanti`);
   const restLab = document.getElementById(`lab-${cat}-restanti`);
   rest.classList.toggle("over", oltre > 0);
@@ -149,19 +175,24 @@ function fillCounter(cat, fatte, target){
     rest.textContent = "+" + fmtOre(oltre);
     restLab.textContent = "oltre";
   } else {
-    rest.textContent = fmtOre(target - fatte);
+    rest.textContent = fmtOre(residuo);
     restLab.textContent = "da svolgere";
   }
 
-  // La barra rappresenta sempre il totale corrente (target oppure, se lo sforo
-  // supera il target, le ore fatte): blu = entro il tetto, rosso = sforo.
-  const scale = Math.max(target, fatte, 1);
-  const entro = Math.min(fatte, target);
+  // Barra: blu (svolte) | grigio vuoto (ancora da fare) | tratteggio
+  // (giustificate, tappo fisso in fondo al tetto) | rosso (oltre).
+  // Il grigio e' uno spacer in flex: si mangia lo spazio che avanza e collassa
+  // da solo quando non ne resta, cosi' il rosso esce oltre il tetto.
   const barBlue = document.getElementById(`bar-${cat}-blue`);
+  const barJust = document.getElementById(`bar-${cat}-just`);
   const barRed = document.getElementById(`bar-${cat}-red`);
-  barBlue.style.width = (entro/scale*100) + "%";
-  barRed.style.width = (oltre/scale*100) + "%";
-  barBlue.classList.toggle("full", target > 0 && fatte >= target);
+  barBlue.style.width = (entro/scala*100) + "%";
+  barJust.style.width = (giust/scala*100) + "%";
+  barRed.style.width = (oltre/scala*100) + "%";
+  // Linea di stacco solo se c'e' davvero qualcosa da recintare: su un div a
+  // larghezza zero un bordo resterebbe visibile come una tacca parassita.
+  barJust.classList.toggle("on", giust > 0);
+  barBlue.classList.toggle("full", disponibile > 0 && fatte >= disponibile);
 }
 
 /* ---------------------------------------------------------- render: card */
@@ -172,10 +203,11 @@ function creaCard(a, opts){
   opts = opts || {};
   const div = document.createElement("div");
   const nascosto = isNascosto(a);
+  const giust = isGiustificato(a);
   const fatto = isFatto(a);
   const inCorso = isInCorso(a);
   const st = getStato(a.id);
-  div.className = "card" + (fatto ? " done" : "") + (nascosto ? " nascosta" : "");
+  div.className = "card" + (fatto || giust ? " done" : "") + (nascosto ? " nascosta" : "");
   div.dataset.id = a.id;
 
   const top = document.createElement("div");
@@ -216,6 +248,18 @@ function creaCard(a, opts){
     btn.className = "btn btn-primary";
     btn.textContent = "Mostra";
     btn.onclick = (e) => { e.stopPropagation(); setStato(a.id, {nascosto:false}); refreshAll(); };
+    actions.appendChild(btn);
+  } else if (giust){
+    // Dicitura, non pulsante: un tocco toglie l'assenza e rimette l'attivita'
+    // in gioco. Sulle extra ripristina anche il "svolta di default".
+    const btn = document.createElement("button");
+    btn.className = "btn btn-assente";
+    btn.textContent = "assente";
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      setStato(a.id, a.extra ? {giustificato:false, fatto:undefined} : {giustificato:false});
+      refreshAll();
+    };
     actions.appendChild(btn);
   } else if (fatto){
     const orari = (st.inizio && st.fine) ? ` (${st.inizio}–${st.fine})` : "";
@@ -285,6 +329,9 @@ function renderOggi(){
   const oggi = allActivities()
     .filter(a => a.data === todayISO())
     .filter(a => !isNascosto(a))
+    // Se ho segnato che non ci sarò, oggi non ho niente da fare: la ritrovo
+    // in Calendario, dove posso anche cambiare idea.
+    .filter(a => !isGiustificato(a))
     .filter(classeVisibile)
     .sort((a,b) => (a.ora||"").localeCompare(b.ora||""));
   if (oggi.length === 0){
@@ -324,7 +371,7 @@ function renderCalendario(){
     .filter(a => soloNascoste || effectiveCategoria(a) === "collegio" || effectiveCategoria(a) === "consigli")
     .filter(classeVisibile)
     .filter(a => meseSel === "tutti" || meseKey(a.data) === meseSel)
-    .filter(a => soloNascoste || statoSel === "tutte" || (statoSel === "fatte") === isFatto(a))
+    .filter(a => soloNascoste || statoSel === "tutte" || (statoSel === "fatte") === (isFatto(a) || isGiustificato(a)))
     .sort((a,b) => (a.data+(a.ora||"")).localeCompare(b.data+(b.ora||"")));
 
   if (items.length === 0){
@@ -422,48 +469,66 @@ function orariRiga(a){
 function righeSvolte(cat){
   return allActivities()
     .filter(a => !isNascosto(a))
-    .filter(isFatto)
+    // Le assenze restano in tabella: il registro non si falsifica. Non entrano
+    // pero' nel totale (il reduce in sezioneProspetto le salta).
+    .filter(a => isFatto(a) || isGiustificato(a))
     .filter(a => effectiveCategoria(a) === cat)
     .sort((a,b) => (a.data + (a.ora||"")).localeCompare(b.data + (b.ora||"")));
 }
-function rigaSintesi(label, fatte, target){
+function rigaSintesi(label, fatte, target, giust){
+  giust = giust || 0;
   let valore, nota, cls = "pr-dx";
   if (target == null){
     valore = `${fmtOre(fatte)} ore`;
     nota = "fuori dai tetti";
   } else {
+    const disponibile = Math.max(0, target - giust);
     valore = `${fmtOre(fatte)} / ${fmtOre(target)} ore`;
-    if (fatte > target){ nota = `oltre di ${fmtOre(fatte - target)}`; cls += " pr-over"; }
-    else nota = `restano ${fmtOre(target - fatte)}`;
+    if (giust > 0) valore += `<span class="pr-giust"> · ${etichettaGiust(giust)}</span>`;
+    if (fatte > disponibile){ nota = `oltre di ${fmtOre(fatte - disponibile)}`; cls += " pr-over"; }
+    else nota = `restano ${fmtOre(disponibile - fatte)}`;
   }
   return `<div class="pr-riga"><span class="pr-lab">${label}</span>` +
          `<span class="pr-val">${valore}</span><span class="${cls}">${nota}</span></div>`;
 }
-function sezioneProspetto(titolo, cat, target){
+function sezioneProspetto(titolo, cat, target, giust){
+  giust = giust || 0;
   const righe = righeSvolte(cat);
-  const totale = righe.reduce((s,a) => s + (effectiveOre(a) || 0), 0);
+  const totale = righe.reduce((s,a) => s + (isGiustificato(a) ? 0 : (effectiveOre(a) || 0)), 0);
   const corpo = righe.length
     ? righe.map(a => {
-        const [ini, fin] = orariRiga(a);
+        // Per un'assenza non ci sono orari da dichiarare: non c'ero.
+        const ass = isGiustificato(a);
+        const [ini, fin] = ass ? ["\u2014", "\u2014"] : orariRiga(a);
         return `<tr>` +
           `<td>${dataBreve(a.data)}</td>` +
           `<td>${escapeHtml(effectiveTitolo(a))}${a.classe ? " \u00b7 " + escapeHtml(a.classe) : ""}</td>` +
           `<td class="pr-c">${ini}</td>` +
           `<td class="pr-c">${fin}</td>` +
-          `<td class="pr-n">${fmtOre(effectiveOre(a) || 0)}</td>` +
+          (ass ? `<td class="pr-n pr-assente">assente</td>`
+               : `<td class="pr-n">${fmtOre(effectiveOre(a) || 0)}</td>`) +
         `</tr>`;
       }).join("")
     : `<tr><td colspan="5" class="pr-vuoto">Nessuna ora registrata.</td></tr>`;
 
   let piede = `<tr class="pr-tot"><td colspan="4">Totale ore svolte</td>` +
               `<td class="pr-n">${fmtOre(totale)}</td></tr>`;
+  if (giust > 0){
+    piede += `<tr class="pr-tot2"><td colspan="4">Ore di assenza giustificata</td>` +
+             `<td class="pr-n">${fmtOre(giust)}</td></tr>`;
+  }
   if (target != null){
-    const oltre = Math.max(0, totale - target);
-    piede += oltre > 0
-      ? `<tr class="pr-tot2"><td colspan="4">Oltre il tetto di ${fmtOre(target)} ore</td>` +
-        `<td class="pr-n pr-over">+${fmtOre(oltre)}</td></tr>`
-      : `<tr class="pr-tot2"><td colspan="4">Ancora da svolgere sul tetto di ${fmtOre(target)} ore</td>` +
-        `<td class="pr-n">${fmtOre(target - totale)}</td></tr>`;
+    // La sottrazione va scritta per esteso: chi legge il foglio deve poter
+    // rifare il conto da solo, senza chiedere spiegazioni.
+    const disponibile = Math.max(0, target - giust);
+    const quota = giust > 0
+      ? `${fmtOre(target)} ore (${fmtOre(target)} − ${etichettaGiust(giust)})`
+      : `${fmtOre(target)} ore`;
+    piede += totale > disponibile
+      ? `<tr class="pr-tot2"><td colspan="4">Oltre il tetto di ${quota}</td>` +
+        `<td class="pr-n pr-over">+${fmtOre(totale - disponibile)}</td></tr>`
+      : `<tr class="pr-tot2"><td colspan="4">Ancora da svolgere sul tetto di ${quota}</td>` +
+        `<td class="pr-n">${fmtOre(disponibile - totale)}</td></tr>`;
   }
   return `<h2 class="pr-h2">${titolo}</h2>` +
     `<table class="pr-tab">` +
@@ -484,12 +549,12 @@ function renderProspetto(){
       <div class="pr-sub">Aggiornato al ${dataEstesa(todayISO())}</div>
     </div>
     <div class="pr-sintesi">
-      ${rigaSintesi("Collegio", tot.collegio, SETTINGS.targetCollegio)}
-      ${rigaSintesi("Consigli", tot.consigli, SETTINGS.targetConsigli)}
+      ${rigaSintesi("Collegio", tot.collegio, SETTINGS.targetCollegio, tot.giustificate.collegio)}
+      ${rigaSintesi("Consigli", tot.consigli, SETTINGS.targetConsigli, tot.giustificate.consigli)}
       ${rigaSintesi("Fuori tetto", tot.altro, null)}
     </div>
-    ${sezioneProspetto("Collegio", "collegio", SETTINGS.targetCollegio)}
-    ${sezioneProspetto("Consigli", "consigli", SETTINGS.targetConsigli)}
+    ${sezioneProspetto("Collegio", "collegio", SETTINGS.targetCollegio, tot.giustificate.collegio)}
+    ${sezioneProspetto("Consigli", "consigli", SETTINGS.targetConsigli, tot.giustificate.consigli)}
     ${sezioneProspetto("Fuori tetto 40+40", "altro", null)}
   `;
 }
@@ -504,6 +569,7 @@ function openDetailSheet(a){
   const cat = effectiveCategoria(a);
   const ore = effectiveOre(a);
   const fatto = isFatto(a);
+  const giust = isGiustificato(a);
   const html = `
     <h2>Modifica</h2>
     <div class="hint">${formatDataLunga(a.data)}${a.ora ? " · " + a.ora : ""}${a.sede ? " · " + a.sede : ""}${a.classe ? " · " + escapeHtml(a.classe) : ""}</div>
@@ -515,14 +581,17 @@ function openDetailSheet(a){
       <option value="consigli" ${cat==="consigli"?"selected":""}>Consigli (40h)</option>
       <option value="altro" ${cat==="altro"?"selected":""}>Altro (fuori tetto)</option>
     </select>
-    <label>Ora inizio / ora fine (facoltativo)</label>
-    <div style="display:flex;gap:10px;">
-      <input type="time" id="d-inizio" value="${st.inizio || ""}" style="flex:1;">
-      <input type="time" id="d-fine" value="${st.fine || ""}" style="flex:1;">
+    <label id="d-giust-riga"><input type="checkbox" id="d-giustificato" ${giust?"checked":""}> Assente giustificato</label>
+    <div id="d-orari-box">
+      <label>Ora inizio / ora fine (facoltativo)</label>
+      <div style="display:flex;gap:10px;">
+        <input type="time" id="d-inizio" value="${st.inizio || ""}" style="flex:1;">
+        <input type="time" id="d-fine" value="${st.fine || ""}" style="flex:1;">
+      </div>
     </div>
-    <label>Ore effettive</label>
+    <label id="d-ore-lab">Ore effettive</label>
     <input type="number" id="d-ore" min="0" step="0.05" value="${ore}">
-    <label><input type="checkbox" id="d-fatto" ${fatto?"checked":""}> Attività svolta</label>
+    <label id="d-fatto-riga"><input type="checkbox" id="d-fatto" ${fatto?"checked":""}> Attività svolta</label>
     <div class="sheet-actions">
       ${a.extra ? '<button class="btn btn-ghost" id="d-elimina">Elimina</button>' : ""}
       <button class="btn btn-primary" id="d-salva">Salva</button>
@@ -539,17 +608,36 @@ function openDetailSheet(a){
   document.getElementById("d-inizio").addEventListener("change", ricalcola);
   document.getElementById("d-fine").addEventListener("change", ricalcola);
 
+  // "Assente giustificato" non esiste per "altro" (fuori tetto, non ha tetto).
+  // Quando e' attiva non ci sono orari da registrare ne' una spunta "svolta".
+  const aggiornaGiust = () => {
+    const isAltro = document.getElementById("d-categoria").value === "altro";
+    const chk = document.getElementById("d-giustificato");
+    if (isAltro) chk.checked = false;
+    document.getElementById("d-giust-riga").classList.toggle("hidden", isAltro);
+    const on = chk.checked && !isAltro;
+    document.getElementById("d-orari-box").classList.toggle("hidden", on);
+    document.getElementById("d-fatto-riga").classList.toggle("hidden", on);
+    document.getElementById("d-ore-lab").textContent = on ? "Ore previste" : "Ore effettive";
+  };
+  document.getElementById("d-categoria").addEventListener("change", aggiornaGiust);
+  document.getElementById("d-giustificato").addEventListener("change", aggiornaGiust);
+  aggiornaGiust();
+
   document.getElementById("d-salva").onclick = () => {
     const nuovoTitolo = document.getElementById("d-titolo").value.trim() || a.titolo;
     const nuovaCat = document.getElementById("d-categoria").value;
     const nuoveOre = parseFloat(document.getElementById("d-ore").value) || 0;
-    const nuovoFatto = document.getElementById("d-fatto").checked;
-    const nuovoInizio = document.getElementById("d-inizio").value || undefined;
-    const nuovaFine = document.getElementById("d-fine").value || undefined;
+    // undefined, non false: cosi' una voce mai giustificata resta identica a
+    // com'era prima di questo aggiornamento.
+    const assente = nuovaCat !== "altro" && document.getElementById("d-giustificato").checked;
+    const nuovoFatto = assente ? false : document.getElementById("d-fatto").checked;
+    const nuovoInizio = assente ? undefined : (document.getElementById("d-inizio").value || undefined);
+    const nuovaFine = assente ? undefined : (document.getElementById("d-fine").value || undefined);
     if (a.extra){
       const idx = EXTRA.findIndex(x => x.id === a.id);
       if (idx >= 0){ EXTRA[idx].titolo = nuovoTitolo; EXTRA[idx].categoria = nuovaCat; EXTRA[idx].ore = nuoveOre; save(LS_EXTRA, EXTRA); }
-      setStato(a.id, {fatto:nuovoFatto, inizio:nuovoInizio, fine:nuovaFine});
+      setStato(a.id, {fatto:nuovoFatto, inizio:nuovoInizio, fine:nuovaFine, giustificato: assente ? true : undefined});
     } else {
       setStato(a.id, {
         // undefined = "come da Piano Annuale": cosi' un titolo riportato
@@ -559,7 +647,8 @@ function openDetailSheet(a){
         ore: nuoveOre === a.ore ? undefined : nuoveOre,
         fatto: nuovoFatto,
         inizio: nuovoInizio,
-        fine: nuovaFine
+        fine: nuovaFine,
+        giustificato: assente ? true : undefined
       });
     }
     closeSheet();
@@ -598,16 +687,19 @@ function openAddSheet(){
       <label>Alunni certificati</label>
       <input type="number" id="a-alunni" min="1" step="1" value="1">
     </div>
-    <label>Ora inizio / ora fine (facoltativo)</label>
-    <div style="display:flex;gap:10px;">
-      <input type="time" id="a-inizio" style="flex:1;">
-      <input type="time" id="a-fine" style="flex:1;">
+    <label id="a-giust-riga"><input type="checkbox" id="a-giustificato"> Assente giustificato</label>
+    <div id="a-orari-box">
+      <label>Ora inizio / ora fine (facoltativo)</label>
+      <div style="display:flex;gap:10px;">
+        <input type="time" id="a-inizio" style="flex:1;">
+        <input type="time" id="a-fine" style="flex:1;">
+      </div>
     </div>
-    <label>Ore</label>
+    <label id="a-ore-lab">Ore</label>
     <input type="number" id="a-ore" min="0" step="0.25" value="1">
     <label>Classe (facoltativo)</label>
     <input type="text" id="a-classe" placeholder="es. 2A">
-    <label><input type="checkbox" id="a-fatto" checked> Segna già come svolta</label>
+    <label id="a-fatto-riga"><input type="checkbox" id="a-fatto" checked> Segna già come svolta</label>
     <div class="sheet-actions">
       <button class="btn btn-primary" id="a-salva">Aggiungi</button>
     </div>
@@ -624,20 +716,39 @@ function openAddSheet(){
   document.getElementById("a-inizio").addEventListener("change", ricalcolaNuova);
   document.getElementById("a-fine").addEventListener("change", ricalcolaNuova);
 
+  // Stessa casella e stesse regole dello sheet "Modifica": i due vanno allineati.
+  const aggiornaGiustNuova = () => {
+    const isAltro = document.getElementById("a-categoria").value === "altro";
+    const chk = document.getElementById("a-giustificato");
+    if (isAltro) chk.checked = false;
+    document.getElementById("a-giust-riga").classList.toggle("hidden", isAltro);
+    const on = chk.checked && !isAltro;
+    document.getElementById("a-orari-box").classList.toggle("hidden", on);
+    document.getElementById("a-fatto-riga").classList.toggle("hidden", on);
+    document.getElementById("a-ore-lab").textContent = on ? "Ore previste" : "Ore";
+  };
+  document.getElementById("a-categoria").addEventListener("change", aggiornaGiustNuova);
+  document.getElementById("a-giustificato").addEventListener("change", aggiornaGiustNuova);
+  aggiornaGiustNuova();
+
   document.getElementById("tpl-generica").onclick = () => {
     document.getElementById("a-titolo").value = "Attività";
     document.getElementById("a-categoria").value = "consigli";
     document.getElementById("a-glo-box").classList.add("hidden");
+    aggiornaGiustNuova();
   };
   document.getElementById("tpl-glo").onclick = () => {
     document.getElementById("a-titolo").value = "GLO";
     document.getElementById("a-categoria").value = "consigli";
     document.getElementById("a-glo-box").classList.remove("hidden");
     aggiornaOreGlo();
+    aggiornaGiustNuova();
   };
   document.getElementById("a-salva").onclick = () => {
-    const inizio = document.getElementById("a-inizio").value || undefined;
-    const fine = document.getElementById("a-fine").value || undefined;
+    const assente = document.getElementById("a-categoria").value !== "altro"
+                 && document.getElementById("a-giustificato").checked;
+    const inizio = assente ? undefined : (document.getElementById("a-inizio").value || undefined);
+    const fine = assente ? undefined : (document.getElementById("a-fine").value || undefined);
     const nuovo = {
       id: "extra-" + Date.now(),
       data: document.getElementById("a-data").value || todayISO(),
@@ -650,7 +761,10 @@ function openAddSheet(){
     };
     EXTRA.push(nuovo);
     save(LS_EXTRA, EXTRA);
-    setStato(nuovo.id, {fatto: document.getElementById("a-fatto").checked, inizio, fine});
+    // fatto:false esplicito: per le extra isFatto() vale true di default.
+    setStato(nuovo.id, assente
+      ? {giustificato:true, fatto:false}
+      : {fatto: document.getElementById("a-fatto").checked, inizio, fine});
     closeSheet();
     mostraNuova(nuovo);
   };
@@ -663,7 +777,10 @@ function mostraNuova(nuovo){
   document.getElementById("filtro-stato").value = "tutte";
   refreshAll();
   let vista = "calendario", contenitore = "calendario-lista";
-  if (nuovo.data === todayISO()){ vista = "oggi"; contenitore = "oggi-lista"; }
+  // Un'assenza non compare in Oggi: mandarci l'utente sarebbe mandarlo davanti
+  // a una lista vuota. Resta in Calendario, dove la ritrova sempre.
+  if (isGiustificato(nuovo)){ /* resta in Calendario */ }
+  else if (nuovo.data === todayISO()){ vista = "oggi"; contenitore = "oggi-lista"; }
   else if (nuovo.categoria === "altro"){ vista = "altro"; contenitore = "altro-lista"; }
   showView(vista);
   evidenzia(contenitore, nuovo.id);
@@ -751,6 +868,7 @@ function attivitaDaEsportare(){
   const oggi = todayISO();
   return allActivities()
     .filter(a => !isNascosto(a))
+    .filter(a => !isGiustificato(a))
     .filter(classeVisibile)
     .filter(a => a.data >= oggi)
     .sort((a,b) => (a.data + (a.ora||"")).localeCompare(b.data + (b.ora||"")));

@@ -6,6 +6,9 @@
   --text:#202124;
   --text-light:#5f6368;
   --border:#e8eaed;
+  /* Grigio del tratteggio: piu' scuro della zona vuota, ma sempre grigio.
+     Un'area interdetta e' una superficie, non un allarme. */
+  --hatch:#bdc1c6;
   --bg-soft:#f8f9fa;
   --white:#ffffff;
   font-size:16px;
@@ -96,13 +99,25 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .cs-num.over{color:var(--red);}
 .cs-lab{font-size:10.5px;line-height:1.25;color:var(--text-light);margin-top:2px;}
 .progress{
-  height:6px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:10px;
+  height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:10px;
   display:flex;
 }
-.progress-seg{height:100%;width:0%;transition:width .3s;}
+.progress-seg{height:100%;width:0%;flex:0 0 auto;transition:width .3s;}
 .progress-blue{background:var(--blue);}
 .progress-blue.full{background:var(--green);}
 .progress-red{background:var(--red);}
+/* Lo spazio ancora libero: si allarga da solo e collassa quando non ne resta. */
+.progress-spacer{flex:1 1 auto;min-width:0;}
+/* Ore giustificate: tappo fisso in fondo al tetto. Tratteggio obliquo fitto
+   (a 2 ore su 40 la zona e' larga ~9px: con un passo largo si vedrebbe una
+   riga sola e sembrerebbe un errore di rendering). La linea di stacco a
+   sinistra si accende solo quando c'e' qualcosa da recintare. */
+.progress-just{
+  background-color:var(--border);
+  background-image:repeating-linear-gradient(45deg,var(--hatch) 0 1px,transparent 1px 3px);
+  border-left:0 solid var(--hatch);
+}
+.progress-just.on{border-left-width:1px;}
 .counter-total{font-size:11.5px;color:var(--text-light);margin-top:7px;}
 
 /* ---------- Oggi ---------- */
@@ -152,6 +167,9 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .btn-done{background:var(--green);color:#fff;}
 .btn-progress{background:var(--amber);color:#fff;}
 .btn-ghost{background:none;color:var(--text-light);border:1px solid var(--border);}
+/* "assente": una dicitura, non un pulsante. Ambra come gli altri stati aperti
+   dell'app, cosi' si distingue a colpo d'occhio dalle svolte scorrendo. */
+.btn-assente{background:none;color:var(--amber);border:1px solid var(--border);padding:9px 14px;}
 .btn-mini{padding:9px 13px;font-size:13px;}
 .btn-secondary{
   background:var(--bg-soft);
@@ -296,6 +314,8 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .pr-val{font-weight:600;font-variant-numeric:tabular-nums;}
 .pr-dx{width:120px;text-align:right;font-size:12.5px;color:var(--text-light);}
 .pr-over{color:var(--red);}
+.pr-giust{font-weight:400;font-size:12.5px;color:var(--text-light);}
+.pr-assente{font-weight:400;color:var(--text-light);}
 .pr-h2{
   font-size:13px;font-weight:600;color:var(--text-light);
   text-transform:uppercase;letter-spacing:.05em;margin:26px 0 8px;
@@ -370,6 +390,7 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
     --text-light:#9aa0a6;
     --border:#3c4043;
     --bg-soft:#292a2d;
+    --hatch:#5f6368;
     --white:#202124;
     --red:#f28b82;
     --amber:#fdd663;
