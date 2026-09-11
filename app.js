@@ -432,6 +432,26 @@ function renderImpostazioni(){
     document.getElementById("info-piano").textContent =
       `${PIANO.istituto || ""} — a.s. ${PIANO.anno_scolastico || ""}. Fonte: ${PIANO.fonte || ""}.`;
   }
+  mostraVersione();
+}
+// La versione non e' scritta a mano da nessuna parte: si legge dal nome della
+// cache da cui l'app si sta davvero servendo. Cosi' questa riga non dice quale
+// versione dovrebbe esserci, dice quale c'e' — che e' l'unica cosa utile
+// quando si sospetta che il telefono abbia ancora la vecchia in cache.
+async function mostraVersione(){
+  const el = document.getElementById("info-versione");
+  if (!el) return;
+  let versione = "—";
+  try{
+    const nomi = (await caches.keys()).filter(n => /^40piu40-v\d+$/.test(n));
+    if (nomi.length){
+      // Durante un aggiornamento puo' esserci piu' di una cache per qualche
+      // istante: vale la piu' recente, ed e' un confronto numerico (v10 > v9).
+      const num = n => parseInt(n.match(/-v(\d+)$/)[1], 10);
+      versione = nomi.sort((a,b) => num(a) - num(b)).pop().replace("40piu40-", "");
+    }
+  }catch(e){ /* niente cache (o niente service worker): resta il trattino */ }
+  el.textContent = `Versione installata: ${versione}`;
 }
 function salvaImpostazioni(){
   SETTINGS.targetCollegio = parseFloat(document.getElementById("input-target-collegio").value) || 0;
