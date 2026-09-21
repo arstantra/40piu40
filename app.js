@@ -6,11 +6,12 @@
 const LS_STATO = "40piu40_stato";      // { [id]: {fatto, ore?, categoria?, inizio?, fine?, nascosto?, giustificato?} }
 const LS_EXTRA = "40piu40_extra";      // [ {id, data, titolo, categoria, ore, classe?, sede?, extra:true} ]
 const LS_SETTINGS = "40piu40_settings"; // { targetCollegio, targetConsigli, mieClassi:[], nome }
+const LS_MODIFICATO = "40piu40_modificato"; // ora dell'ultima modifica ai dati: serve al confronto con Drive
 
 let PIANO = null;      // contenuto data/piano.json
 let STATO = {};
 let EXTRA = [];
-let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [], nome: "", promemoria: 60 };
+let SETTINGS = { targetCollegio: 40, targetConsigli: 40, mieClassi: [], nome: "", promemoria: 60, ultimoBackup: "" };
 let currentMainView = "oggi";
 
 /* ---------------------------------------------------------- utilità date */
@@ -67,14 +68,32 @@ function load(key, fallback){
     return raw ? JSON.parse(raw) : fallback;
   }catch(e){ return fallback; }
 }
+let driveZitto = false;   // true solo mentre applico un file scaricato da Drive
 function save(key, val){
-  try{ localStorage.setItem(key, JSON.stringify(val)); }
+  let testo;
+  try{ testo = JSON.stringify(val); }catch(e){ return; }
+  // Riscrivere lo stesso identico contenuto non e' una modifica: aprire il
+  // prospetto risalva le impostazioni tali e quali, e senza questo controllo
+  // quel gesto farebbe sembrare questo dispositivo il piu' aggiornato.
+  let uguale = false;
+  try{ uguale = (localStorage.getItem(key) === testo); }catch(e){}
+  try{ localStorage.setItem(key, testo); }
   catch(e){ console.warn("Salvataggio non riuscito", e); }
+  // Ogni modifica vera segna l'ora e fa ripartire il conto alla rovescia del
+  // salvataggio su Drive. Mentre applico un file appena scaricato sto zitto,
+  // altrimenti lo rimanderei su' un istante dopo.
+  if (!uguale && !driveZitto && (key === LS_STATO || key === LS_EXTRA || key === LS_SETTINGS)){
+    segnaModifica();
+  }
+}
+function segnaModifica(){
+  try{ localStorage.setItem(LS_MODIFICATO, new Date().toISOString()); }catch(e){}
+  programmaDrive();
 }
 function loadState(){
   STATO = load(LS_STATO, {});
   EXTRA = load(LS_EXTRA, []);
-  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[], nome:"", promemoria:60}, load(LS_SETTINGS, {}));
+  SETTINGS = Object.assign({targetCollegio:40, targetConsigli:40, mieClassi:[], nome:"", promemoria:60, ultimoBackup:""}, load(LS_SETTINGS, {}));
 }
 function getStato(id){
   return STATO[id] || {};
@@ -432,6 +451,9 @@ function renderImpostazioni(){
     document.getElementById("info-piano").textContent =
       `${PIANO.istituto || ""} — a.s. ${PIANO.anno_scolastico || ""}. Fonte: ${PIANO.fonte || ""}.`;
   }
+  renderDrive();
+  mostraUltimoBackup();
+  mostraMemoria();
   mostraVersione();
 }
 // La versione non e' scritta a mano da nessuna parte: si legge dal nome della
@@ -678,7 +700,9 @@ function openDetailSheet(a){
   if (delBtn) delBtn.onclick = () => {
     EXTRA = EXTRA.filter(x => x.id !== a.id);
     save(LS_EXTRA, EXTRA);
-    delete STATO[a.id];
+    // Lapide invece di cancellazione secca: cosi' la cancellazione viaggia
+    // fino all'altro dispositivo e la sincronizzazione non la fa tornare a galla.
+    STATO[a.id] = { eliminato: true };
     save(LS_STATO, STATO);
     closeSheet();
     refreshAll();
@@ -968,6 +992,9 @@ function esportaBackup(){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  SETTINGS.ultimoBackup = new Date().toISOString();
+  save(LS_SETTINGS, SETTINGS);
+  mostraUltimoBackup();
 }
 function azzeraTutto(){
   const ok = confirm("Cancellare tutte le presenze registrate e le attività aggiunte a mano? Non si può annullare.\n\nIl calendario del Piano Annuale resta, solo lo storico di ciò che hai segnato viene azzerato.");
@@ -995,6 +1022,488 @@ function importaBackup(file){
     }
   };
   reader.readAsText(file);
+}
+
+/* ---------------------------------------------------------- Google Drive
+   Sincronizzazione fra telefono e tablet. Un solo file nel Drive di Andrea,
+   40piu40-dati.json, con lo stesso contenuto del backup JSON piu' un campo
+   aggiornatoIl. I dati locali restano sempre la fonte sicura: se Drive non
+   risponde, o il permesso e' scaduto, l'app continua a funzionare come prima
+   e in Impostazioni compare la riga "Da riconnettere". Nessun errore a
+   schermo, mai.
+
+   Autenticazione: redirect di primo livello, non popup. Nella PWA installata
+   il popup e' il punto debole (puo' aprirsi fuori dall'app e non tornare piu'
+   indietro); una navigazione normale esce e rientra senza problemi. Il
+   permesso scade dopo un'ora: il rinnovo si tenta in silenzio con un iframe
+   nascosto verso accounts.google.com — se riesce non si vede niente, se non
+   riesce resta la riga "Da riconnettere" e basta. */
+
+const DRIVE_CLIENT_ID = "281391122896-plt2cibtuafj71455u6o96me0deupada.apps.googleusercontent.com";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const DRIVE_NOME_FILE = "40piu40-dati.json";
+const DRIVE_API = "https://www.googleapis.com/drive/v3";
+const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
+const DRIVE_ATTESA = 4000;      // quanto aspetto, dopo una modifica, prima di salvare
+const DRIVE_RISYNC = 30000;     // ogni quanto, al massimo, risincronizzo tornando sull'app
+
+const LS_DRIVE = "40piu40_drive";
+const LS_PRIMA_SYNC = "40piu40_prima_sync";
+const LS_OAUTH = "40piu40_oauth_ritorno";
+const LS_OAUTH_STATE = "40piu40_oauth_state";
+
+let DRIVE = { attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"" };
+let driveTimer = null;
+let driveOccupato = false;
+let driveUltimaSync = 0;
+
+function driveCollegato(){ return !!DRIVE.attivo; }
+function driveCaricaConf(){
+  DRIVE = Object.assign({attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:""}, load(LS_DRIVE, {}));
+}
+function driveSalvaConf(){
+  try{ localStorage.setItem(LS_DRIVE, JSON.stringify(DRIVE)); }catch(e){}
+}
+
+/* --- permesso --- */
+// Il redirect_uri deve combaciare alla lettera con quello registrato in
+// Google Cloud: https://40piu40.nuovadidattica.eu/oauth.html
+function driveRedirectUri(){
+  return location.origin + location.pathname.replace(/[^/]*$/, "") + "oauth.html";
+}
+function driveUrlAuth(silenzioso){
+  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try{ localStorage.setItem(LS_OAUTH_STATE, nonce); }catch(e){}
+  const p = new URLSearchParams({
+    client_id: DRIVE_CLIENT_ID,
+    redirect_uri: driveRedirectUri(),
+    response_type: "token",
+    scope: DRIVE_SCOPE,
+    include_granted_scopes: "true",
+    state: nonce
+  });
+  if (silenzioso) p.set("prompt", "none");
+  if (DRIVE.email) p.set("login_hint", DRIVE.email);
+  return "https://accounts.google.com/o/oauth2/v2/auth?" + p.toString();
+}
+function driveAccetta(d){
+  if (!d || d.errore || !d.token) return false;
+  let atteso = "";
+  try{ atteso = localStorage.getItem(LS_OAUTH_STATE) || ""; }catch(e){}
+  if (atteso && d.stato !== atteso) return false;   // risposta che non ho chiesto io
+  DRIVE.token = d.token;
+  // Due minuti di margine: meglio rinnovare un po' prima che scoprire
+  // a meta' salvataggio che il permesso e' scaduto.
+  DRIVE.scadenza = Date.now() + (Math.max(120, d.scade || 3600) - 120) * 1000;
+  driveSalvaConf();
+  return true;
+}
+function driveCollega(){
+  location.assign(driveUrlAuth(false));
+}
+// Rinnovo silenzioso: iframe nascosto, prompt=none. Se Google non puo'
+// rispondere senza interazione torna un errore, e noi non insistiamo.
+function driveRinnovo(){
+  return new Promise((risolvi) => {
+    let finito = false;
+    let ifr = null;
+    const tempo = setTimeout(() => chiudi(false), 12000);
+    function chiudi(ok){
+      if (finito) return;
+      finito = true;
+      clearTimeout(tempo);
+      window.removeEventListener("message", ascolta);
+      if (ifr && ifr.parentNode) ifr.parentNode.removeChild(ifr);
+      risolvi(ok);
+    }
+    function ascolta(ev){
+      if (ev.origin !== location.origin) return;
+      const d = ev.data;
+      if (!d || d.tipo !== "40piu40-oauth") return;
+      chiudi(driveAccetta(d));
+    }
+    window.addEventListener("message", ascolta);
+    try{
+      ifr = document.createElement("iframe");
+      ifr.setAttribute("aria-hidden", "true");
+      ifr.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;border:0;";
+      ifr.src = driveUrlAuth(true);
+      document.body.appendChild(ifr);
+    }catch(e){ chiudi(false); }
+  });
+}
+async function driveToken(){
+  if (!driveCollegato()) return "";
+  if (DRIVE.token && Date.now() < DRIVE.scadenza) return DRIVE.token;
+  const ok = await driveRinnovo();
+  renderDrive();
+  return ok ? DRIVE.token : "";
+}
+function driveScollega(){
+  const ok = confirm("Scollegare Google Drive?\n\nI dati restano su questo dispositivo e il file sul Drive non viene toccato.");
+  if (!ok) return;
+  const vecchio = DRIVE.token;
+  DRIVE = { attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"" };
+  driveSalvaConf();
+  if (vecchio){
+    try{ fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(vecchio), {method:"POST", mode:"no-cors"}); }catch(e){}
+  }
+  renderDrive();
+}
+
+/* --- chiamate --- */
+// Ogni chiamata passa da qui: se il permesso e' scaduto tenta un rinnovo
+// silenzioso e riprova una volta sola. Se non va, torna null e chi chiama
+// rinuncia in silenzio.
+async function driveChiama(url, opzioni, giaRiprovato){
+  const token = await driveToken();
+  if (!token) return null;
+  const o = Object.assign({}, opzioni || {});
+  o.headers = Object.assign({}, o.headers || {}, { Authorization: "Bearer " + token });
+  let r;
+  try{ r = await fetch(url, o); }catch(e){ return null; }
+  if (r.status === 401 && !giaRiprovato){
+    DRIVE.token = ""; DRIVE.scadenza = 0;
+    const ok = await driveRinnovo();
+    renderDrive();
+    if (ok) return driveChiama(url, opzioni, true);
+    return null;
+  }
+  if (!r.ok) return null;
+  return r;
+}
+// Con drive.file l'app vede solo i file che ha creato lei: la ricerca per
+// nome e' sicura, e se Andrea cestina il file ne viene creato un altro.
+async function driveFile(){
+  if (DRIVE.fileId) return DRIVE.fileId;
+  const q = encodeURIComponent("name='" + DRIVE_NOME_FILE + "' and trashed=false");
+  const r = await driveChiama(DRIVE_API + "/files?q=" + q + "&fields=files(id)&pageSize=10", {});
+  if (r){
+    try{
+      const d = await r.json();
+      if (d.files && d.files.length){ DRIVE.fileId = d.files[0].id; driveSalvaConf(); return DRIVE.fileId; }
+    }catch(e){}
+  }
+  const c = await driveChiama(DRIVE_API + "/files?fields=id", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: DRIVE_NOME_FILE, mimeType: "application/json" })
+  });
+  if (!c) return "";
+  try{
+    const d = await c.json();
+    DRIVE.fileId = d.id || "";
+  }catch(e){ return ""; }
+  driveSalvaConf();
+  return DRIVE.fileId;
+}
+async function driveChiSono(){
+  const r = await driveChiama(DRIVE_API + "/about?fields=user(emailAddress)", {});
+  if (!r) return;
+  try{
+    const d = await r.json();
+    if (d.user && d.user.emailAddress){ DRIVE.email = d.user.emailAddress; driveSalvaConf(); }
+  }catch(e){}
+  renderDrive();
+}
+function drivePayload(){
+  return {
+    stato: STATO,
+    extra: EXTRA,
+    settings: SETTINGS,
+    aggiornatoIl: localStorage.getItem(LS_MODIFICATO) || new Date().toISOString(),
+    esportato: new Date().toISOString()
+  };
+}
+
+/* --- salvataggio --- */
+function programmaDrive(){
+  if (!driveCollegato()) return;
+  if (driveTimer) clearTimeout(driveTimer);
+  driveTimer = setTimeout(() => { driveTimer = null; driveSalva(); }, DRIVE_ATTESA);
+}
+function driveSalvaSubito(){
+  // L'app viene chiusa o messa via: se c'era un salvataggio in attesa,
+  // parte adesso. Senza questo l'ultima modifica puo' non partire mai.
+  if (driveTimer){ clearTimeout(driveTimer); driveTimer = null; driveSalva(); }
+}
+async function driveSalva(){
+  if (!driveCollegato() || driveOccupato) return;
+  driveOccupato = true;
+  let esito = "no";
+  try{ esito = await driveSalvaInterno(); }
+  catch(e){ /* rete assente: si riprova alla prossima modifica */ }
+  driveOccupato = false;
+  renderDrive();
+  if (esito === "riconcilia") await driveSincronizza();
+}
+async function driveSalvaInterno(){
+  const id = await driveFile();
+  if (!id) return "no";
+  // Guardia: qualcun altro ha scritto dopo l'ultima volta che ho guardato?
+  // Allora non sovrascrivo — scarico e riconcilio. E' lo scenario del tablet
+  // lasciato aperto che cancella il lavoro fatto sul telefono.
+  const m = await driveChiama(DRIVE_API + "/files/" + id + "?fields=modifiedTime", {});
+  if (m){
+    try{
+      const meta = await m.json();
+      if (DRIVE.remotoVisto && meta.modifiedTime && meta.modifiedTime > DRIVE.remotoVisto) return "riconcilia";
+    }catch(e){}
+  }
+  const payload = drivePayload();
+  const r = await driveChiama(DRIVE_UPLOAD + "/files/" + id + "?uploadType=media&fields=modifiedTime", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload, null, 2)
+  });
+  if (!r) return "no";
+  try{
+    const d = await r.json();
+    DRIVE.remotoVisto = d.modifiedTime || DRIVE.remotoVisto;
+  }catch(e){}
+  // Il punto in cui i due lati erano d'accordo. Serve a distinguere "ho
+  // cambiato io" da "non ho cambiato niente": senza, l'unica cosa che si puo'
+  // fare quando cambiano tutti e due e' scegliere chi perde.
+  DRIVE.localeVisto = payload.aggiornatoIl || "";
+  DRIVE.salvatoIl = new Date().toISOString();
+  driveSalvaConf();
+  return "ok";
+}
+
+/* --- sincronizzazione --- */
+async function driveSincronizza(){
+  if (!driveCollegato() || driveOccupato) return;
+  driveOccupato = true;
+  driveUltimaSync = Date.now();
+  let esito = "no";
+  try{ esito = await driveSincronizzaInterno(); }
+  catch(e){ /* niente rete: restano i dati di qui */ }
+  driveOccupato = false;
+  if (esito === "applicato" || esito === "fuso"){ renderImpostazioni(); refreshAll(); }
+  renderDrive();
+  if (esito === "carica" || esito === "fuso") await driveSalva();
+}
+async function driveSincronizzaInterno(){
+  const id = await driveFile();
+  if (!id) return "no";
+  const r = await driveChiama(DRIVE_API + "/files/" + id + "?alt=media", {});
+  if (!r) return "no";
+  let remoto = null;
+  try{ remoto = await r.json(); }catch(e){ remoto = null; }
+  let modificato = "";
+  const m = await driveChiama(DRIVE_API + "/files/" + id + "?fields=modifiedTime", {});
+  if (m){ try{ modificato = (await m.json()).modifiedTime || ""; }catch(e){} }
+  const vistoPrima = DRIVE.remotoVisto;
+  if (modificato){ DRIVE.remotoVisto = modificato; driveSalvaConf(); }
+
+  // File appena creato, o vuoto: ci metto quello che c'e' qui.
+  if (!remoto || (!remoto.stato && !remoto.extra && !remoto.aggiornatoIl)) return "carica";
+
+  const localeOra = localStorage.getItem(LS_MODIFICATO) || "";
+
+  // Primo incontro con questo file su questo dispositivo: non c'e' una storia
+  // da cui capire chi ha cambiato cosa, quindi vale la regola semplice —
+  // vince il piu' recente.
+  if (!vistoPrima || !DRIVE.localeVisto){
+    const remotoIl = Date.parse(remoto.aggiornatoIl || "") || 0;
+    const localeIl = Date.parse(localeOra) || 0;
+    if (remotoIl > localeIl){
+      driveCopiaPrima();   // rete di sicurezza prima di sovrascrivere i dati di qui
+      driveApplica(remoto);
+      return "applicato";
+    }
+    if (localeIl > remotoIl) return "carica";
+    DRIVE.localeVisto = localeOra;
+    driveSalvaConf();
+    return "no";
+  }
+
+  // Qui invece so da dove siamo partiti, e posso distinguere i quattro casi.
+  const remotoCambiato = !modificato || modificato > vistoPrima;
+  const localeCambiato = localeOra > DRIVE.localeVisto;
+  if (remotoCambiato && localeCambiato){
+    // Tutti e due hanno lavorato da quando ci siamo visti. Scegliere il piu'
+    // recente qui vorrebbe dire buttare via il lavoro dell'altro dispositivo:
+    // e' esattamente il modo in cui il tablet lasciato aperto cancella le ore
+    // segnate sul telefono. Quindi non si sceglie, si tiene tutto.
+    driveCopiaPrima();
+    driveFondi(remoto);
+    return "fuso";
+  }
+  if (remotoCambiato){
+    driveCopiaPrima();
+    driveApplica(remoto);
+    return "applicato";
+  }
+  if (localeCambiato) return "carica";
+  return "no";
+}
+// Unione voce per voce. Quello che e' stato toccato solo di la' arriva,
+// quello toccato solo di qua resta, e per le voci toccate da tutte e due
+// vince questo dispositivo — quello in mano a chi sta guardando.
+function driveFondi(remoto){
+  driveZitto = true;
+  try{
+    const statoFuso = Object.assign({}, remoto.stato || {}, STATO);
+    const extraFuso = (EXTRA || []).slice();
+    const gia = {};
+    extraFuso.forEach(a => { if (a && a.id) gia[a.id] = true; });
+    (remoto.extra || []).forEach(a => { if (a && a.id && !gia[a.id]) extraFuso.push(a); });
+    STATO = statoFuso;
+    // Le attivita' cancellate a mano lasciano una lapide in STATO: cosi' la
+    // cancellazione viaggia come qualunque altra modifica e l'unione non le
+    // fa tornare a galla.
+    EXTRA = extraFuso.filter(a => !(a && a.id && STATO[a.id] && STATO[a.id].eliminato));
+    SETTINGS = Object.assign({}, remoto.settings || {}, SETTINGS);
+    save(LS_STATO, STATO);
+    save(LS_EXTRA, EXTRA);
+    save(LS_SETTINGS, SETTINGS);
+    try{ localStorage.setItem(LS_MODIFICATO, new Date().toISOString()); }catch(e){}
+  } finally { driveZitto = false; }
+}
+function driveApplica(d){
+  driveZitto = true;      // altrimenti rimanderei su' subito quello che ho appena scaricato
+  try{
+    if (d.stato) { STATO = d.stato; save(LS_STATO, STATO); }
+    if (d.extra) { EXTRA = d.extra; save(LS_EXTRA, EXTRA); }
+    if (d.settings){ SETTINGS = Object.assign(SETTINGS, d.settings); save(LS_SETTINGS, SETTINGS); }
+    const quando = d.aggiornatoIl || new Date().toISOString();
+    try{ localStorage.setItem(LS_MODIFICATO, quando); }catch(e){}
+    DRIVE.localeVisto = quando;
+    driveSalvaConf();
+  } finally { driveZitto = false; }
+}
+// Prima di rimpiazzare i dati di questo dispositivo con quelli scaricati,
+// ne tengo una copia. Si recupera dalla riga in Impostazioni.
+function driveCopiaPrima(){
+  try{
+    localStorage.setItem(LS_PRIMA_SYNC, JSON.stringify({
+      stato: STATO, extra: EXTRA, settings: SETTINGS, salvatoIl: new Date().toISOString()
+    }));
+  }catch(e){}
+}
+function driveRipristinaPrima(){
+  let c = null;
+  try{ c = JSON.parse(localStorage.getItem(LS_PRIMA_SYNC) || "null"); }catch(e){}
+  if (!c) return;
+  const ok = confirm("Rimettere i dati che c'erano su questo dispositivo prima della sincronizzazione?\n\nQuelli scaricati da Drive vengono sostituiti, qui e sul Drive.");
+  if (!ok) return;
+  if (c.stato) { STATO = c.stato; save(LS_STATO, STATO); }
+  if (c.extra) { EXTRA = c.extra; save(LS_EXTRA, EXTRA); }
+  if (c.settings){ SETTINGS = Object.assign(SETTINGS, c.settings); save(LS_SETTINGS, SETTINGS); }
+  try{ localStorage.removeItem(LS_PRIMA_SYNC); }catch(e){}
+  segnaModifica();
+  renderImpostazioni();
+  refreshAll();
+}
+
+/* --- riga in Impostazioni --- */
+function statoDrive(){
+  if (!DRIVE.attivo) return "spento";
+  if (DRIVE.token && Date.now() < DRIVE.scadenza) return "ok";
+  return "scaduto";
+}
+function oraBreve(iso){
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const ora = pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  if (d.toDateString() === new Date().toDateString()) return "alle " + ora;
+  return "il " + d.toLocaleDateString("it-IT", {day:"numeric", month:"long"}) + " alle " + ora;
+}
+function renderDrive(){
+  const riga = document.getElementById("drive-stato");
+  if (!riga) return;
+  const btn = document.getElementById("btn-drive");
+  const off = document.getElementById("btn-drive-off");
+  const rip = document.getElementById("btn-drive-ripristina");
+  const s = statoDrive();
+  const chi = DRIVE.email ? escapeHtml(DRIVE.email) + "<br>" : "";
+  if (s === "spento"){
+    riga.innerHTML = "Non collegato.";
+    btn.textContent = "Collega";
+    btn.classList.remove("hidden");
+    off.classList.add("hidden");
+  } else if (s === "ok"){
+    const q = oraBreve(DRIVE.salvatoIl);
+    riga.innerHTML = chi + (q ? "Salvato " + q + "." : "Collegato.");
+    btn.classList.add("hidden");
+    off.classList.remove("hidden");
+  } else {
+    riga.innerHTML = chi + "Da riconnettere.";
+    btn.textContent = "Riconnetti";
+    btn.classList.remove("hidden");
+    off.classList.remove("hidden");
+  }
+  let copia = null;
+  try{ copia = localStorage.getItem(LS_PRIMA_SYNC); }catch(e){}
+  rip.classList.toggle("hidden", !copia);
+}
+
+/* --- avvio del modulo --- */
+// Torna true se siamo appena rientrati dal consenso di Google.
+function driveInit(){
+  driveCaricaConf();
+  let ritorno = null;
+  try{
+    const raw = localStorage.getItem(LS_OAUTH);
+    if (raw){ localStorage.removeItem(LS_OAUTH); ritorno = JSON.parse(raw); }
+  }catch(e){}
+  let appena = false;
+  if (ritorno && driveAccetta(ritorno)){
+    DRIVE.attivo = true;
+    driveSalvaConf();
+    appena = true;
+  }
+  const btn = document.getElementById("btn-drive");
+  const off = document.getElementById("btn-drive-off");
+  const rip = document.getElementById("btn-drive-ripristina");
+  if (btn) btn.addEventListener("click", driveCollega);
+  if (off) off.addEventListener("click", driveScollega);
+  if (rip) rip.addEventListener("click", driveRipristinaPrima);
+  renderDrive();
+  return appena;
+}
+
+/* ---------------------------------------------------------- Memoria del telefono */
+// Senza questo, quando lo spazio scarseggia il browser puo' buttare via
+// localStorage senza avvisare nessuno. Qui chiediamo di trattare questi dati
+// come da conservare. Chrome per Android lo concede da solo alle app
+// installate. Dove la funzione non esiste, la riga non compare affatto.
+let MEMORIA = "";
+async function proteggiMemoria(){
+  if (!navigator.storage || !navigator.storage.persist){ MEMORIA = ""; mostraMemoria(); return; }
+  try{
+    if (await navigator.storage.persisted()) MEMORIA = "ok";
+    else MEMORIA = (await navigator.storage.persist()) ? "ok" : "no";
+  }catch(e){ MEMORIA = ""; }
+  mostraMemoria();
+}
+function mostraMemoria(){
+  const el = document.getElementById("info-memoria");
+  if (!el) return;
+  if (MEMORIA === "ok"){
+    el.textContent = "Memoria protetta: il browser non cancella questi dati per fare spazio.";
+    el.classList.remove("hidden");
+  } else if (MEMORIA === "no"){
+    el.textContent = "Memoria non protetta: se lo spazio del telefono finisce, il browser puo' cancellare questi dati. Installare l'app dalla schermata home di solito basta a proteggerla.";
+    el.classList.remove("hidden");
+  } else {
+    el.classList.add("hidden");
+  }
+}
+function mostraUltimoBackup(){
+  const el = document.getElementById("info-backup");
+  if (!el) return;
+  const iso = SETTINGS.ultimoBackup || "";
+  if (!iso){ el.textContent = "Non hai mai esportato un backup."; return; }
+  const d = new Date(iso);
+  if (isNaN(d.getTime())){ el.textContent = ""; return; }
+  const quando = d.toLocaleDateString("it-IT", {day:"numeric", month:"long"});
+  const giorni = Math.floor((Date.now() - d.getTime()) / 86400000);
+  el.textContent = giorni >= 30
+    ? "Ultimo backup: " + quando + ". E' passato un po': ne vale la pena uno nuovo."
+    : "Ultimo backup: " + quando + ".";
 }
 
 /* ---------------------------------------------------------- Avvio */
@@ -1068,6 +1577,29 @@ async function init(){
 
   refreshAll();
   showView("oggi");
+
+  // Google Drive. Se siamo appena rientrati dal consenso apro Impostazioni,
+  // cosi' l'esito si vede subito; poi sincronizzo, in silenzio.
+  const appenaCollegato = driveInit();
+  if (appenaCollegato){
+    renderImpostazioni();
+    showView("impostazioni");
+  }
+  if (driveCollegato()){
+    if (!DRIVE.email) driveChiSono();
+    driveSincronizza();
+  }
+  // Quando l'app viene messa via, il salvataggio in attesa parte adesso: fra
+  // quattro secondi il telefono potrebbe averla gia' congelata. Al ritorno,
+  // invece, ricontrollo il Drive: potrei aver segnato qualcosa altrove.
+  document.addEventListener("visibilitychange", () => {
+    if (!driveCollegato()) return;
+    if (document.visibilityState === "hidden") driveSalvaSubito();
+    else if (Date.now() - driveUltimaSync > DRIVE_RISYNC) driveSincronizza();
+  });
+  window.addEventListener("pagehide", () => { if (driveCollegato()) driveSalvaSubito(); });
+
+  proteggiMemoria();
 
   if ("serviceWorker" in navigator){
     navigator.serviceWorker.register("./sw.js").catch(() => {});

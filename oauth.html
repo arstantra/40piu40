@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>40+40</title>
+</head>
+<body>
+<!-- Pagina di ritorno dal consenso di Google. Non si vede: legge il permesso
+     dal frammento dell'indirizzo e torna subito all'app. Se sta dentro un
+     iframe (rinnovo silenzioso) passa il permesso alla finestra che l'ha
+     aperta invece di navigare. -->
+<script>
+(function(){
+  function leggi(s){
+    var p = new URLSearchParams(s || "");
+    return {
+      tipo: "40piu40-oauth",
+      token: p.get("access_token") || "",
+      scade: parseInt(p.get("expires_in"), 10) || 0,
+      stato: p.get("state") || "",
+      errore: p.get("error") || ""
+    };
+  }
+  var d = leggi(location.hash.slice(1));
+  if (!d.token && !d.errore) d = leggi(location.search.slice(1));
+  if (!d.token && !d.errore) d.errore = "nessun_permesso";
+  if (window.top !== window.self){
+    try{ parent.postMessage(d, location.origin); }catch(e){}
+    return;
+  }
+  try{ localStorage.setItem("40piu40_oauth_ritorno", JSON.stringify(d)); }catch(e){}
+  location.replace("./index.html");
+})();
+</script>
+</body>
+</html>

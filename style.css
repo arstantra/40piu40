@@ -59,6 +59,7 @@ html,body{
   margin:0 auto;
   padding:0 20px 150px;
   min-height:100vh;
+  min-height:100dvh;
   position:relative;
 }
 .view-header{
@@ -374,6 +375,16 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 }
 .sheet-actions{display:flex;gap:10px;margin-top:22px;}
 .sheet-actions .btn{flex:1;}
+
+.drive-stato{font-size:13.5px;line-height:1.6;color:var(--text);margin:0 0 14px;}
+
+/* Tablet coricato: con poca altezza lo sheet deve restare usabile. */
+@media (orientation:landscape) and (max-height:600px){
+  .sheet{max-height:94vh;padding-top:14px;}
+  .sheet label{margin:10px 0 5px;}
+  .sheet-actions{margin-top:16px;}
+  .view{padding-bottom:110px;}
+}
 
 @media (min-width:520px){
   body{background:var(--bg-soft);}

@@ -128,8 +128,19 @@
   </section>
 
   <section class="settings-block">
+    <h2>Google Drive</h2>
+    <p class="hint">Collega il tuo Drive e le ore che segni si ritrovano su tutti i tuoi dispositivi.</p>
+    <p class="drive-stato" id="drive-stato">Non collegato.</p>
+    <button class="btn-secondary" id="btn-drive">Collega</button>
+    <button class="btn-secondary hidden" id="btn-drive-off">Scollega</button>
+    <button class="btn-secondary hidden" id="btn-drive-ripristina">Ripristina i dati di questo dispositivo</button>
+  </section>
+
+  <section class="settings-block">
     <h2>Backup</h2>
-    <p class="hint">I dati restano solo su questo telefono. Esporta un backup ogni tanto per non perderli.</p>
+    <p class="hint">Un file con tutto quello che hai segnato, da tenere da parte.</p>
+    <p class="hint" id="info-backup"></p>
+    <p class="hint hidden" id="info-memoria"></p>
     <button class="btn-secondary" id="btn-export">Esporta backup</button>
     <button class="btn-secondary" id="btn-import">Importa backup</button>
     <input type="file" id="input-import" accept="application/json" class="hidden">
