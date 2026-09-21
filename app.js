@@ -1082,7 +1082,12 @@ function driveUrlAuth(silenzioso){
     include_granted_scopes: "true",
     state: nonce
   });
+  // Silenzioso: nessuna schermata, o niente. Interattivo: il selettore
+  // dell'account SEMPRE. Senza, Google prende in silenzio l'unico account
+  // con cui il browser e' gia' connesso — che sul telefono e' quello
+  // personale — e non c'e' modo di cambiarlo da dentro l'app.
   if (silenzioso) p.set("prompt", "none");
+  else p.set("prompt", "select_account");
   if (DRIVE.email) p.set("login_hint", DRIVE.email);
   return "https://accounts.google.com/o/oauth2/v2/auth?" + p.toString();
 }
