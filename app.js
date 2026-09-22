@@ -996,21 +996,36 @@ function esportaBackup(){
   save(LS_SETTINGS, SETTINGS);
   mostraUltimoBackup();
 }
-function azzeraTutto(){
-  const ok = confirm("Cancellare tutte le presenze registrate e le attività aggiunte a mano? Non si può annullare.\n\nIl calendario del Piano Annuale resta, solo lo storico di ciò che hai segnato viene azzerato.");
+async function azzeraTutto(){
+  const ok = confirm("Cancellare tutte le presenze registrate e le attività aggiunte a mano?\n\nIl calendario del Piano Annuale resta, solo lo storico di ciò che hai segnato viene azzerato. Prima ne salvo una copia.");
   if (!ok) return;
+  // Prima una copia: su questo dispositivo sempre, su Drive se risponde.
+  if (driveHaDatiQui()){
+    driveCopiaPrima();
+    await driveCopiaEvento("prima-di-azzerare");
+  }
   STATO = {};
   EXTRA = [];
   save(LS_STATO, STATO);
   save(LS_EXTRA, EXTRA);
   refreshAll();
+  renderDrive();
   alert("Dati azzerati.");
 }
 function importaBackup(file){
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
+    let data = null;
+    try{ data = JSON.parse(reader.result); }catch(e){ data = null; }
+    if (!data || (!data.stato && !data.extra && !data.settings)){
+      alert("Il file non sembra un backup valido.");
+      return;
+    }
+    if (driveHaDatiQui()){
+      driveCopiaPrima();
+      await driveCopiaEvento("prima-di-importare");
+    }
     try{
-      const data = JSON.parse(reader.result);
       if (data.stato) { STATO = data.stato; save(LS_STATO, STATO); }
       if (data.extra) { EXTRA = data.extra; save(LS_EXTRA, EXTRA); }
       if (data.settings) { SETTINGS = Object.assign(SETTINGS, data.settings); save(LS_SETTINGS, SETTINGS); }
@@ -1046,20 +1061,27 @@ const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 const DRIVE_ATTESA = 4000;      // quanto aspetto, dopo una modifica, prima di salvare
 const DRIVE_RISYNC = 30000;     // ogni quanto, al massimo, risincronizzo tornando sull'app
+const DRIVE_PREFISSO_COPIA = "40piu40-copia-";
+const DRIVE_OGNI_COPIA = 7 * 86400000;   // una copia di sicurezza a settimana
+const DRIVE_COPIE_SETTIMANALI = 8;       // quante copie settimanali tengo (due mesi)
+const DRIVE_COPIE_EVENTO = 5;            // quante copie "prima di azzerare/importare/ripristinare"
+const DRIVE_AVVISO = 3 * 86400000;       // dopo quanto silenzio di Drive lo dico anche in home
 
 const LS_DRIVE = "40piu40_drive";
 const LS_PRIMA_SYNC = "40piu40_prima_sync";
 const LS_OAUTH = "40piu40_oauth_ritorno";
 const LS_OAUTH_STATE = "40piu40_oauth_state";
 
-let DRIVE = { attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"" };
+let DRIVE = { attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"", ultimaCopia:"", contattoIl:"" };
 let driveTimer = null;
 let driveOccupato = false;
 let driveUltimaSync = 0;
+let driveTentato = false;      // true dopo il primo tentativo di sincronia: prima non so ancora se Drive tace
+let driveCopiaInCorso = false;
 
 function driveCollegato(){ return !!DRIVE.attivo; }
 function driveCaricaConf(){
-  DRIVE = Object.assign({attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:""}, load(LS_DRIVE, {}));
+  DRIVE = Object.assign({attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"", ultimaCopia:"", contattoIl:""}, load(LS_DRIVE, {}));
 }
 function driveSalvaConf(){
   try{ localStorage.setItem(LS_DRIVE, JSON.stringify(DRIVE)); }catch(e){}
@@ -1148,7 +1170,7 @@ function driveScollega(){
   const ok = confirm("Scollegare Google Drive?\n\nI dati restano su questo dispositivo e il file sul Drive non viene toccato.");
   if (!ok) return;
   const vecchio = DRIVE.token;
-  DRIVE = { attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"" };
+  DRIVE = { attivo:false, token:"", scadenza:0, email:"", fileId:"", salvatoIl:"", remotoVisto:"", localeVisto:"", ultimaCopia:"", contattoIl:"" };
   driveSalvaConf();
   if (vecchio){
     try{ fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(vecchio), {method:"POST", mode:"no-cors"}); }catch(e){}
@@ -1241,6 +1263,7 @@ async function driveSalva(){
   driveOccupato = false;
   renderDrive();
   if (esito === "riconcilia") await driveSincronizza();
+  else if (esito === "ok") await driveCopiaSettimanale();
 }
 async function driveSalvaInterno(){
   const id = await driveFile();
@@ -1271,6 +1294,7 @@ async function driveSalvaInterno(){
   // fare quando cambiano tutti e due e' scegliere chi perde.
   DRIVE.localeVisto = payload.aggiornatoIl || "";
   DRIVE.salvatoIl = new Date().toISOString();
+  DRIVE.contattoIl = DRIVE.salvatoIl;
   driveSalvaConf();
   return "ok";
 }
@@ -1282,11 +1306,13 @@ async function driveSincronizza(){
   driveUltimaSync = Date.now();
   let esito = "no";
   try{ esito = await driveSincronizzaInterno(); }
-  catch(e){ /* niente rete: restano i dati di qui */ }
+  catch(e){ esito = "errore"; /* niente rete: restano i dati di qui */ }
   driveOccupato = false;
+  driveTentato = true;
   if (esito === "applicato" || esito === "fuso"){ renderImpostazioni(); refreshAll(); }
   renderDrive();
   if (esito === "carica" || esito === "fuso") await driveSalva();
+  else if (esito !== "errore") await driveCopiaSettimanale();
 }
 async function driveSincronizzaInterno(){
   const id = await driveFile();
@@ -1295,6 +1321,11 @@ async function driveSincronizzaInterno(){
   if (!r) return "no";
   let remoto = null;
   try{ remoto = await r.json(); }catch(e){ remoto = null; }
+  // Drive ha risposto: e' questo che conta per l'avviso "Drive tace da giorni",
+  // non l'ultimo salvataggio (se non segno niente per una settimana non salvo
+  // niente, ma Drive c'e').
+  DRIVE.contattoIl = new Date().toISOString();
+  driveSalvaConf();
   let modificato = "";
   const m = await driveChiama(DRIVE_API + "/files/" + id + "?fields=modifiedTime", {});
   if (m){ try{ modificato = (await m.json()).modifiedTime || ""; }catch(e){} }
@@ -1405,7 +1436,7 @@ function driveRipristinaPrima(){
   let c = null;
   try{ c = JSON.parse(localStorage.getItem(LS_PRIMA_SYNC) || "null"); }catch(e){}
   if (!c) return;
-  const ok = confirm("Rimettere i dati che c'erano su questo dispositivo prima della sincronizzazione?\n\nQuelli scaricati da Drive vengono sostituiti, qui e sul Drive.");
+  const ok = confirm("Rimettere i dati che c'erano su questo dispositivo prima dell'ultima sostituzione (sincronizzazione, azzeramento, importazione o ripristino)?\n\nQuelli di adesso vengono sostituiti, qui e sul Drive.");
   if (!ok) return;
   if (c.stato) { STATO = c.stato; save(LS_STATO, STATO); }
   if (c.extra) { EXTRA = c.extra; save(LS_EXTRA, EXTRA); }
@@ -1414,6 +1445,187 @@ function driveRipristinaPrima(){
   segnaModifica();
   renderImpostazioni();
   refreshAll();
+}
+
+/* --- copie di sicurezza ---
+   La sincronizzazione copia su tutti i dispositivi anche gli errori: un
+   "Azzera" premuto per sbaglio, un bug, un'importazione sbagliata arrivano
+   ovunque in pochi secondi. Le versioni precedenti che Drive tiene da solo
+   spariscono dopo 30 giorni o 100 salvataggi, e l'app salva a ogni modifica.
+   Quindi, accanto al file che si sincronizza, l'app tiene delle copie a parte
+   che la sincronizzazione non tocca mai:
+   - una a settimana (40piu40-copia-2026-09-22.json), le ultime 8;
+   - una prima di ogni azione che sostituisce tutto (azzerare, importare un
+     backup, ripristinare una copia), le ultime 5.
+   Tutto in silenzio: se Drive non risponde, la copia si fa la prossima volta. */
+function driveNomeCopia(motivo){
+  return DRIVE_PREFISSO_COPIA + todayISO() + (motivo ? "-" + motivo : "") + ".json";
+}
+function driveCopiaSettimanaleNome(nome){
+  return /^40piu40-copia-\d{4}-\d{2}-\d{2}\.json$/.test(nome || "");
+}
+async function driveElencoCopie(){
+  const q = encodeURIComponent("name contains '" + DRIVE_PREFISSO_COPIA + "' and trashed=false");
+  const r = await driveChiama(DRIVE_API + "/files?q=" + q +
+    "&orderBy=createdTime%20desc&fields=files(id,name,createdTime)&pageSize=100", {});
+  if (!r) return null;
+  try{
+    const d = await r.json();
+    return (d.files || [])
+      .filter(f => f && f.name && f.name.indexOf(DRIVE_PREFISSO_COPIA) === 0)
+      .sort((a, b) => String(b.createdTime).localeCompare(String(a.createdTime)));
+  }catch(e){ return null; }
+}
+async function driveScriviCopia(nome){
+  const c = await driveChiama(DRIVE_API + "/files?fields=id,createdTime", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: nome, mimeType: "application/json" })
+  });
+  if (!c) return false;
+  let id = "";
+  try{ id = (await c.json()).id || ""; }catch(e){}
+  if (!id) return false;
+  const payload = drivePayload();
+  const r = await driveChiama(DRIVE_UPLOAD + "/files/" + id + "?uploadType=media&fields=id", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload, null, 2)
+  });
+  if (!r){
+    // Una copia vuota ingannerebbe chi la ripristina: meglio nessuna.
+    await driveChiama(DRIVE_API + "/files/" + id, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trashed: true })
+    });
+    return false;
+  }
+  return true;
+}
+// Oltre il numero stabilito le piu' vecchie vanno nel cestino di Drive (non
+// cancellate: restano recuperabili altri 30 giorni).
+async function driveSfoltisci(){
+  const tutte = await driveElencoCopie();
+  if (!tutte) return;
+  const sett = tutte.filter(f => driveCopiaSettimanaleNome(f.name));
+  const evento = tutte.filter(f => !driveCopiaSettimanaleNome(f.name));
+  const via = sett.slice(DRIVE_COPIE_SETTIMANALI).concat(evento.slice(DRIVE_COPIE_EVENTO));
+  for (const f of via){
+    await driveChiama(DRIVE_API + "/files/" + f.id, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trashed: true })
+    });
+  }
+}
+async function driveCopiaSettimanale(){
+  if (!driveCollegato() || driveCopiaInCorso) return;
+  const ultima = Date.parse(DRIVE.ultimaCopia || "") || 0;
+  if (Date.now() - ultima < DRIVE_OGNI_COPIA) return;
+  if (!driveHaDatiQui()) return;        // una copia vuota non protegge niente
+  driveCopiaInCorso = true;
+  try{
+    // L'altro dispositivo puo' averla gia' fatta questa settimana.
+    const tutte = await driveElencoCopie();
+    if (!tutte) return;
+    const sett = tutte.filter(f => driveCopiaSettimanaleNome(f.name));
+    const recente = sett.length ? (Date.parse(sett[0].createdTime) || 0) : 0;
+    if (recente && Date.now() - recente < DRIVE_OGNI_COPIA){
+      DRIVE.ultimaCopia = sett[0].createdTime;
+      driveSalvaConf();
+      return;
+    }
+    if (await driveScriviCopia(driveNomeCopia(""))){
+      DRIVE.ultimaCopia = new Date().toISOString();
+      driveSalvaConf();
+      await driveSfoltisci();
+    }
+  } catch(e){ /* niente rete: la prossima volta */ }
+  finally { driveCopiaInCorso = false; }
+}
+// Prima di un'azione che sostituisce tutto. Non aspetta piu' di 8 secondi:
+// senza rete l'azione va avanti lo stesso (resta la copia su questo dispositivo).
+async function driveCopiaEvento(motivo){
+  if (!driveCollegato() || !driveHaDatiQui()) return false;
+  const lavoro = (async () => {
+    try{
+      const ok = await driveScriviCopia(driveNomeCopia(motivo));
+      if (ok) await driveSfoltisci();
+      return ok;
+    }catch(e){ return false; }
+  })();
+  const tempo = new Promise(ris => setTimeout(() => ris(false), 8000));
+  return Promise.race([lavoro, tempo]);
+}
+function driveEtichettaCopia(f){
+  const d = new Date(f.createdTime);
+  let t = isNaN(d.getTime()) ? f.name : d.toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"});
+  const m = /^40piu40-copia-\d{4}-\d{2}-\d{2}-(.+)\.json$/.exec(f.name || "");
+  if (m) t += " \u00b7 " + m[1].replace(/-/g, " ");
+  return t;
+}
+async function driveMostraCopie(){
+  const box = document.getElementById("drive-copie");
+  if (!box) return;
+  if (!box.classList.contains("hidden")){ box.classList.add("hidden"); return; }
+  box.innerHTML = '<p class="copia-nota">Un momento\u2026</p>';
+  box.classList.remove("hidden");
+  const tutte = await driveElencoCopie();
+  if (!tutte){ box.innerHTML = '<p class="copia-nota">Drive non risponde. Riprova pi\u00f9 tardi.</p>'; return; }
+  if (!tutte.length){ box.innerHTML = '<p class="copia-nota">Nessuna copia per ora. La prima si fa da sola appena segni qualcosa.</p>'; return; }
+  box.innerHTML = '<p class="copia-nota">Una a settimana, pi\u00f9 una prima di ogni azzeramento, importazione o ripristino.</p>' +
+    tutte.map(f => '<div class="copia-riga"><span>' + escapeHtml(driveEtichettaCopia(f)) +
+      '</span><button class="btn-secondary" data-copia="' + escapeHtml(f.id) + '">Ripristina</button></div>').join("");
+  box.querySelectorAll("[data-copia]").forEach(b => {
+    const f = tutte.find(x => x.id === b.dataset.copia);
+    b.addEventListener("click", () => driveRipristinaCopia(f));
+  });
+}
+async function driveRipristinaCopia(f){
+  if (!f) return;
+  const ok = confirm("Rimettere i dati della copia del " + driveEtichettaCopia(f) + "?\n\n" +
+    "Quelli di adesso vengono sostituiti, qui e sugli altri dispositivi. Prima ne salvo una copia, cos\u00ec si pu\u00f2 tornare indietro.");
+  if (!ok) return;
+  const r = await driveChiama(DRIVE_API + "/files/" + f.id + "?alt=media", {});
+  let d = null;
+  if (r){ try{ d = await r.json(); }catch(e){ d = null; } }
+  if (!d || (!d.stato && !d.extra)){ alert("Non riesco a leggere questa copia. Riprova pi\u00f9 tardi."); return; }
+  driveCopiaPrima();
+  await driveCopiaEvento("prima-di-ripristinare");
+  STATO = d.stato || {};
+  EXTRA = d.extra || [];
+  save(LS_STATO, STATO);
+  save(LS_EXTRA, EXTRA);
+  if (d.settings){ SETTINGS = Object.assign(SETTINGS, d.settings); save(LS_SETTINGS, SETTINGS); }
+  segnaModifica();
+  renderImpostazioni();
+  refreshAll();
+  const box = document.getElementById("drive-copie");
+  if (box) box.classList.add("hidden");
+  alert("Copia ripristinata.");
+}
+
+/* --- avviso: Drive tace da giorni ---
+   Se il permesso scade e il rinnovo non riesce, o il telefono resta senza
+   rete, i dati vivono di nuovo in un posto solo. Non e' un errore da
+   mostrare a ogni salvataggio, ma dopo tre giorni va detto, anche in home. */
+function driveTaceDa(){
+  if (!driveCollegato() || !driveTentato) return "";
+  const ultimo = [DRIVE.contattoIl, DRIVE.salvatoIl].filter(Boolean).sort().pop() || "";
+  const t = Date.parse(ultimo);
+  if (!t) return "";
+  return (Date.now() - t >= DRIVE_AVVISO) ? ultimo : "";
+}
+function driveDataBreve(iso){
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("it-IT", {day:"numeric", month:"long"});
+}
+function renderAvvisoDrive(){
+  const el = document.getElementById("avviso-drive");
+  if (!el) return;
+  const da = driveTaceDa();
+  if (!da){ el.classList.add("hidden"); el.textContent = ""; return; }
+  el.textContent = "Drive non salva dal " + driveDataBreve(da) + ". Tocca qui per controllare.";
+  el.classList.remove("hidden");
 }
 
 /* --- riga in Impostazioni --- */
@@ -1454,9 +1666,15 @@ function renderDrive(){
     btn.classList.remove("hidden");
     off.classList.remove("hidden");
   }
+  const tace = driveTaceDa();
+  if (tace) riga.innerHTML = chi + (s === "scaduto" ? "Da riconnettere. " : "") + "Nessun contatto con Drive dal " + escapeHtml(driveDataBreve(tace)) + ".";
   let copia = null;
   try{ copia = localStorage.getItem(LS_PRIMA_SYNC); }catch(e){}
   rip.classList.toggle("hidden", !copia);
+  const cop = document.getElementById("btn-drive-copie");
+  if (cop) cop.classList.toggle("hidden", s === "spento");
+  if (s === "spento"){ const box = document.getElementById("drive-copie"); if (box) box.classList.add("hidden"); }
+  renderAvvisoDrive();
 }
 
 /* --- avvio del modulo --- */
@@ -1480,6 +1698,10 @@ function driveInit(){
   if (btn) btn.addEventListener("click", driveCollega);
   if (off) off.addEventListener("click", driveScollega);
   if (rip) rip.addEventListener("click", driveRipristinaPrima);
+  const cop = document.getElementById("btn-drive-copie");
+  if (cop) cop.addEventListener("click", driveMostraCopie);
+  const avv = document.getElementById("avviso-drive");
+  if (avv) avv.addEventListener("click", () => { renderImpostazioni(); showView("impostazioni"); });
   renderDrive();
   return appena;
 }

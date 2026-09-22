@@ -377,6 +377,12 @@ h2{font-size:14px;font-weight:600;color:var(--text-light);text-transform:upperca
 .sheet-actions .btn{flex:1;}
 
 .drive-stato{font-size:13.5px;line-height:1.6;color:var(--text);margin:0 0 14px;}
+.drive-copie{margin:6px 0 8px;font-size:13.5px;}
+.copia-riga{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
+.copia-riga:first-child{border-top:none;}
+.copia-riga .btn-secondary{margin:0;padding:7px 14px;font-size:13px;flex:0 0 auto;}
+.copia-nota{color:var(--text-light);margin:0 0 8px;}
+.avviso-drive{margin:-4px 0 14px;font-size:13.5px;color:var(--amber);text-align:center;cursor:pointer;}
 
 /* Tablet coricato: con poca altezza lo sheet deve restare usabile. */
 @media (orientation:landscape) and (max-height:600px){
