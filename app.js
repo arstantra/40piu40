@@ -1307,20 +1307,23 @@ async function driveSincronizzaInterno(){
   const localeOra = localStorage.getItem(LS_MODIFICATO) || "";
 
   // Primo incontro con questo file su questo dispositivo: non c'e' una storia
-  // da cui capire chi ha cambiato cosa, quindi vale la regola semplice —
-  // vince il piu' recente.
+  // da cui capire chi ha cambiato cosa. Se hanno dei dati tutti e due non si
+  // sceglie lo stesso — vale la regola di sempre, si tiene tutto.
+  // ⚠️ Serve soprattutto dopo che il telefono e' stato ripulito (aggiornamento
+  // di sistema, "ottimizzazione" del produttore): la pulizia porta via anche
+  // la configurazione di Drive, quindi chi riapre l'app vuota, riscrive due
+  // ore a memoria e SOLO DOPO ricollega Drive risulterebbe "il piu' recente"
+  // e cancellerebbe mesi di lavoro. Succede con la sequenza piu' naturale che
+  // ci sia, quindi non basta sperare che non succeda.
   if (!vistoPrima || !DRIVE.localeVisto){
-    const remotoIl = Date.parse(remoto.aggiornatoIl || "") || 0;
-    const localeIl = Date.parse(localeOra) || 0;
-    if (remotoIl > localeIl){
-      driveCopiaPrima();   // rete di sicurezza prima di sovrascrivere i dati di qui
+    if (!driveHaDati(remoto)) return "carica";
+    driveCopiaPrima();     // rete di sicurezza prima di toccare i dati di qui
+    if (!driveHaDatiQui()){
       driveApplica(remoto);
       return "applicato";
     }
-    if (localeIl > remotoIl) return "carica";
-    DRIVE.localeVisto = localeOra;
-    driveSalvaConf();
-    return "no";
+    driveFondi(remoto);
+    return "fuso";
   }
 
   // Qui invece so da dove siamo partiti, e posso distinguere i quattro casi.
@@ -1342,6 +1345,17 @@ async function driveSincronizzaInterno(){
   }
   if (localeCambiato) return "carica";
   return "no";
+}
+function driveQuanteVoci(stato){
+  let n = 0;
+  for (const k in (stato || {})) n++;
+  return n;
+}
+function driveHaDati(d){
+  return !!d && (driveQuanteVoci(d.stato) > 0 || (Array.isArray(d.extra) && d.extra.length > 0));
+}
+function driveHaDatiQui(){
+  return driveQuanteVoci(STATO) > 0 || (Array.isArray(EXTRA) && EXTRA.length > 0);
 }
 // Unione voce per voce. Quello che e' stato toccato solo di la' arriva,
 // quello toccato solo di qua resta, e per le voci toccate da tutte e due
